@@ -4,6 +4,7 @@ import { reportDelayData, throughputData, conflictData, sectionUtilization } fro
 import { Download, FileText } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { apiFetch } from '../utils/api'
 
 const card = { background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 24 }
 
@@ -30,9 +31,8 @@ export default function Reports() {
   useEffect(() => {
     const fetchTrains = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('trax_token')}` },
-        })
+        const res = await apiFetch('/api/v1/trains')
+        if (!res) return
         if (!res.ok) throw new Error(`API error ${res.status}`)
         setTrains(await res.json())
         setFetchError(null)

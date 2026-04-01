@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { apiFetch } from '../utils/api'
 
 function Signup() {
   const navigate = useNavigate()
@@ -40,11 +41,13 @@ function Signup() {
 
     setIsLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/register', {
+      const res = await apiFetch('/api/v1/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: username.trim(), password, role }),
       })
+
+      if (!res) return
 
       const data = await res.json()
 

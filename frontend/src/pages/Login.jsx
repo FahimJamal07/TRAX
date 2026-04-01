@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { apiFetch } from '../utils/api'
 
 function Login() {
   const [username, setUsername] = useState('')
@@ -9,6 +11,13 @@ function Login() {
   const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (sessionStorage.getItem('session_expired') === 'true') {
+      toast.error('Your session has expired. Please log in again.', { duration: 5000 })
+      sessionStorage.removeItem('session_expired')
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,11 +31,13 @@ function Login() {
       body.append('username', username)
       body.append('password', password)
 
-      const res = await fetch('http://127.0.0.1:8000/api/v1/token', {
+      const res = await apiFetch('/api/v1/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
       })
+
+      if (!res) return
 
       if (res.status === 401) {
         setError('Invalid credentials. Please check your username and password.')
@@ -38,14 +49,15 @@ function Login() {
       }
 
       const data = await res.json()
-      localStorage.setItem('trax_token', data.access_token)
+      const token = data.access_token
+      sessionStorage.setItem('trax_token', token)
       // The backend now includes "role" in the token response.
       // Store it separately so Sidebar and ProtectedRoute can read it
       // without having to decode the JWT on the client.
       localStorage.setItem('trax_role', data.role ?? 'controller')
       // Hard redirect so ProtectedRoute re-evaluates with the new token
       window.location.href = '/dashboard'
-    } catch (err) {
+    } catch {
       setError('Could not connect to the server. Is the backend running?')
     } finally {
       setIsLoading(false)
@@ -75,6 +87,7 @@ function Login() {
                 style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '11px 14px', fontSize: 14, outline: 'none', fontFamily: 'DM Sans, sans-serif', color: '#0f1f35', transition: 'border-color 0.15s' }}
                 onFocus={e => e.target.style.borderColor = '#2563eb'}
                 onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                autoComplete='username'
               />
             </div>
             <div>
@@ -84,6 +97,7 @@ function Login() {
                   style={{ width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '11px 40px 11px 14px', fontSize: 14, outline: 'none', fontFamily: 'DM Sans, sans-serif', color: '#0f1f35' }}
                   onFocus={e => e.target.style.borderColor = '#2563eb'}
                   onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                  autoComplete='current-password'
                 />
                 <button type="button" onClick={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}

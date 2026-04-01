@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { apiFetch } from '../utils/api'
 
 const card = { background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 24 }
 const label = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }
@@ -47,11 +48,8 @@ export default function Simulation() {
 
     const fetchTrains = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-          },
-        })
+        const res = await apiFetch('/api/v1/trains')
+        if (!res) return
 
         if (!res.ok) return
 
@@ -90,12 +88,9 @@ export default function Simulation() {
     const parsedWeights = savedWeights ? JSON.parse(savedWeights) : null;
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/optimize', {
+      const res = await apiFetch('/api/v1/optimize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           express_injected_delay: parseInt(expressDelay) || 0,
           freight_injected_delay: parseInt(freightDelay) || 0,
@@ -117,6 +112,7 @@ export default function Simulation() {
           ] : []
         })
       })
+      if (!res) return
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
       if (data.status === 'success') {
@@ -143,14 +139,12 @@ export default function Simulation() {
     }
     setIsAddingTrain(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
+      const res = await apiFetch('/api/v1/trains', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTrain)
       })
+      if (!res) return
       const data = await res.json()
       if (res.ok && data.status === 'success') {
         showToast(`Train ${newTrain.id} injected successfully! Network re-optimized.`, 'success')
@@ -159,7 +153,7 @@ export default function Simulation() {
       } else {
         showToast(data.detail || data.message || 'Failed to add train.', 'error')
       }
-    } catch (err) {
+    } catch {
       showToast('Server connection error.', 'error')
     } finally {
       setIsAddingTrain(false)
@@ -199,16 +193,14 @@ export default function Simulation() {
     }
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/optimize', {
+      const res = await apiFetch('/api/v1/optimize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      if (res.status === 401) { setBlockError('Session expired. Please log in again.'); return }
+      if (!res) return
+
       if (res.status === 403) { setBlockError('You do not have permission to run optimizations.'); return }
       if (!res.ok) { const d = await res.json(); setBlockError(d.detail ?? `Server error (${res.status})`); return }
 

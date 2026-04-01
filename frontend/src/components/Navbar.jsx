@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Bell, ChevronDown, LogOut, Train } from 'lucide-react'
+import { apiFetch } from '../utils/api'
 
 function Navbar({ onLogout }) {
   const [time, setTime] = useState(new Date())
@@ -15,7 +16,7 @@ function Navbar({ onLogout }) {
 
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem('trax_user')
+      const storedUser = sessionStorage.getItem('trax_user')
       if (storedUser) {
         const userData = JSON.parse(storedUser)
         const initials = userData.name
@@ -30,7 +31,7 @@ function Navbar({ onLogout }) {
         })
       }
     } catch (e) {
-      console.error('Error reading user from localStorage:', e)
+      console.error('Error reading user from sessionStorage:', e)
     }
   }, [])
 
@@ -38,10 +39,8 @@ function Navbar({ onLogout }) {
   useEffect(() => {
     const fetchAlerts = async () => {
       try {
-        const token = localStorage.getItem('trax_token')
-        const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const res = await apiFetch('/api/v1/trains')
+        if (!res) return
         if (!res.ok) return
         const trains = await res.json()
 

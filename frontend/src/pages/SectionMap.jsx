@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../utils/api';
 
 // Coordinates scaled perfectly for the sleek dashboard aesthetic
 const STATIONS = [
@@ -47,11 +48,8 @@ export default function SectionMap() {
     useEffect(() => {
         const fetchTopology = async () => {
             try {
-                const token = localStorage.getItem('trax_token');
-                if (!token) return;
-                const headers = { 'Authorization': "Bearer " + token };
-
-                const trainsRes = await fetch('http://127.0.0.1:8000/api/v1/trains', { headers });
+                const trainsRes = await apiFetch('/api/v1/trains');
+                if (!trainsRes) return;
 
                 if (trainsRes.ok) {
                     setTrains(await trainsRes.json());

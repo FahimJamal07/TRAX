@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { apiFetch } from '../utils/api'
 
 export default function Settings() {
   const [s, setS] = useState(() => {
@@ -34,10 +35,10 @@ export default function Settings() {
   const handleReset = async () => {
     setIsResetting(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/reset', {
+      const res = await apiFetch('/api/v1/reset', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('trax_token')}` },
       })
+      if (!res) return
       if (!res.ok) throw new Error(`Server error: ${res.status}`)
       // Belt-and-braces: clear any residual localStorage artefacts
       localStorage.removeItem('trax_live_schedule')

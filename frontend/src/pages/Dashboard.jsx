@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import KPICard from '../components/KPICard'
 import AlertPanel from '../components/AlertPanel'
 import TrainDetailModal from '../components/TrainDetailModal'
+import { apiFetch } from '../utils/api'
 
 // Station definitions used for delay/capacity analytics
 const STATIONS = [
@@ -59,11 +60,8 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchTrains = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-          },
-        })
+        const res = await apiFetch('/api/v1/trains')
+        if (!res) return
         if (!res.ok) throw new Error(`Server error: ${res.status}`)
         const data = await res.json()
         // Normalise integer priority → display label so Badges render correctly

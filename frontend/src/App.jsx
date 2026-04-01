@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import Dashboard from './pages/Dashboard'
@@ -11,8 +12,8 @@ import Settings from './pages/Settings'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 
-// Helper — true when a real JWT is stored (set by Login.jsx on successful auth)
-const isLoggedIn  = () => !!localStorage.getItem('trax_token')
+// Helper — true when a real JWT is stored for this browser session
+const isLoggedIn  = () => !!sessionStorage.getItem('trax_token')
 const getUserRole = () => localStorage.getItem('trax_role') || 'controller'
 
 /**
@@ -28,13 +29,14 @@ function RoleRoute({ allowedRoles, children }) {
 
 function App() {
   const handleLogout = () => {
-    localStorage.removeItem('trax_token')
+    sessionStorage.removeItem('trax_token')
     localStorage.removeItem('trax_role')   // clear role alongside token
     window.location.href = '/login'
   }
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={
           isLoggedIn() ? <Navigate to="/dashboard" /> : <Login />

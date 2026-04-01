@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import TrainDetailModal from '../components/TrainDetailModal'
+import { apiFetch } from '../utils/api'
 
 const typeCfg = { Express: ['#fef2f2', '#ef4444'], Passenger: ['#eff6ff', '#2563eb'], Freight: ['#fffbeb', '#f59e0b'], Mail: ['#f0fdf4', '#16a34a'] }
 const priCfg = { High: ['#fef2f2', '#ef4444'], Medium: ['#fffbeb', '#f59e0b'], Low: ['#f0fdf4', '#16a34a'] }
@@ -33,11 +34,8 @@ export default function TrainList() {
   useEffect(() => {
     const fetchTrains = async () => {
       try {
-        const res = await fetch('http://127.0.0.1:8000/api/v1/trains', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-          },
-        })
+        const res = await apiFetch('/api/v1/trains')
+        if (!res) return
         if (!res.ok) throw new Error(`Server error: ${res.status}`)
         const data = await res.json()
         // Normalise: convert integer priority to a display label so existing

@@ -2,6 +2,7 @@ import React from 'react'
 import { Outlet } from 'react-router-dom'
 import Navbar from './Navbar'
 import Sidebar from './Sidebar'
+import { apiFetch } from '../utils/api'
 
 function Layout({ onLogout }) {
   const [expressDelay, setExpressDelay] = React.useState('')
@@ -12,17 +13,15 @@ function Layout({ onLogout }) {
   const handleOptimize = async () => {
     setIsLoading(true)
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/optimize', {
+      const res = await apiFetch('/api/v1/optimize', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('trax_token')}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           express_injected_delay: parseInt(expressDelay) || 0,
           freight_injected_delay: parseInt(freightDelay) || 0
         })
       })
+      if (!res) return
       const data = await res.json()
       if (data.status === 'success') {
         localStorage.setItem('trax_live_schedule', JSON.stringify(data.schedule));
