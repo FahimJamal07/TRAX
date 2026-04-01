@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+ortools
+pydantic
+sqlalchemy
+PyJWT
+passlib[bcrypt]
+bcrypt==3.2.2
+python-multipart
