@@ -1,34 +1,52 @@
 import React from 'react'
 
 function AlertPanel({ alerts = [] }) {
-  const cfg = {
-    high:   { bg: '#fef2f2', border: '#fecaca', dot: '#ef4444', text: '#b91c1c' },
-    medium: { bg: '#fffbeb', border: '#fed7aa', dot: '#f59e0b', text: '#b45309' },
-    low:    { bg: '#eff6ff', border: '#bfdbfe', dot: '#3b82f6', text: '#1d4ed8' },
+  const severityConfig = {
+    high: {
+      container: 'alert-surface alert-critical',
+      text: 'text-red-600 dark:text-red-400',
+      badge: 'alert-surface alert-critical',
+      dot: '#ef4444',
+      subtitle: 'text-slate-500 dark:text-slate-400'
+    },
+    medium: {
+      container: 'alert-surface alert-warning',
+      text: 'text-amber-700 dark:text-amber-400',
+      badge: 'alert-surface alert-warning',
+      dot: '#f59e0b',
+      subtitle: 'text-slate-500 dark:text-slate-400'
+    },
+    low: {
+      container: 'alert-surface alert-success',
+      text: 'text-emerald-600 dark:text-emerald-400',
+      badge: 'alert-surface alert-success',
+      dot: '#10b981',
+      subtitle: 'text-slate-500 dark:text-slate-400'
+    },
   }
 
   return (
-    <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0f1f35' }}>Alerts & Conflicts</h3>
-        <span style={{ background: '#fef2f2', color: '#ef4444', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, border: '1px solid #fecaca' }}>
+    <div className="surface-card surface-panel" style={{ borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <div className="text-slate-900 dark:text-white" style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600 }}>Alerts & Conflicts</h3>
+        <span className={severityConfig.high.badge} style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
           {alerts.filter(a => a.severity === 'high').length} Critical
         </span>
       </div>
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflowY: 'auto' }}>
         {alerts.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+          <div className="text-slate-500 dark:text-slate-400" style={{ padding: '20px', textAlign: 'center', fontSize: 13 }}>
             No active alerts
           </div>
         ) : (
           alerts.map(alert => {
-            const c = cfg[alert.severity]
+            const config = severityConfig[alert.severity]
             return (
-              <div key={alert.id} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 10, padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: c.dot, marginTop: 4, flexShrink: 0 }}></div>
+              <div key={alert.id} className={config.container} style={{ padding: '10px 12px', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: config.dot, marginTop: 4, flexShrink: 0 }}></div>
                 <div>
-                  <p style={{ fontSize: 12, color: c.text, fontWeight: 500, lineHeight: 1.4 }}>{alert.message}</p>
-                  <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{alert.time}</p>
+                  <p className={config.text} style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.4 }}>{alert.message}</p>
+                  <p className={config.subtitle} style={{ fontSize: 11, marginTop: 3 }}>{alert.time}</p>
                 </div>
               </div>
             )

@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Bell, ChevronDown, LogOut, Train } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, TrainFront } from 'lucide-react'
 import { apiFetch } from '../utils/api'
+import { ThemeToggle } from './ThemeToggle'
+import { getStoredUserProfile } from '../utils/session'
 
-function Navbar({ onLogout }) {
+
+function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
   const [time, setTime] = useState(new Date())
   const [showMenu, setShowMenu] = useState(false)
-  const [user, setUser] = useState({ name: 'User', role: 'Operator', initials: 'U' })
   const [showNotifications, setShowNotifications] = useState(false)
   const [alerts, setAlerts] = useState([])
+  const [acknowledgedDelays, setAcknowledgedDelays] = useState(new Set())
+  const [storedUser, setStoredUser] = useState(getStoredUserProfile)
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -15,23 +19,19 @@ function Navbar({ onLogout }) {
   }, [])
 
   useEffect(() => {
-    try {
-      const storedUser = sessionStorage.getItem('trax_user')
-      if (storedUser) {
-        const userData = JSON.parse(storedUser)
-        const initials = userData.name
-          ?.split(' ')
-          .map(n => n[0])
-          .join('')
-          .toUpperCase() || 'U'
-        setUser({
-          name: userData.name || 'User',
-          role: userData.role || 'Operator',
-          initials: initials
-        })
-      }
-    } catch (e) {
-      console.error('Error reading user from sessionStorage:', e)
+    const syncUserProfile = () => {
+      setStoredUser(getStoredUserProfile())
+    }
+
+    syncUserProfile()
+    window.addEventListener('storage', syncUserProfile)
+    window.addEventListener('focus', syncUserProfile)
+    window.addEventListener('trax-auth-update', syncUserProfile)
+
+    return () => {
+      window.removeEventListener('storage', syncUserProfile)
+      window.removeEventListener('focus', syncUserProfile)
+      window.removeEventListener('trax-auth-update', syncUserProfile)
     }
   }, [])
 
@@ -46,7 +46,7 @@ function Navbar({ onLogout }) {
 
         // Generate alerts for any train currently experiencing a delay
         const activeAlerts = trains
-          .filter(t => t.delay > 0)
+          .filter(t => t.delay > 0 && !acknowledgedDelays.has(t.id))
           .map(t => ({
             id: t.id,
             message: `Train ${t.id} is experiencing a ${t.delay} minute delay.`,
@@ -62,10 +62,18 @@ function Navbar({ onLogout }) {
     fetchAlerts()
     const interval = setInterval(fetchAlerts, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [acknowledgedDelays])
 
   const formatted = time.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
     ' | ' + time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).toUpperCase()
+
+  const dropdownBg = isDarkMode ? '#0f172a' : '#ffffff'
+  const dropdownBorder = isDarkMode ? '#334155' : '#e5e7eb'
+  const listBg = isDarkMode ? '#111827' : '#f8fafc'
+  const itemBorder = isDarkMode ? '#1f2937' : '#e2e8f0'
+  const titleColor = isDarkMode ? '#e2e8f0' : '#1e293b'
+  const mutedColor = isDarkMode ? '#94a3b8' : '#64748b'
+  const hoverItemBg = isDarkMode ? '#1f2937' : '#ffffff'
 
   return (
     <header style={{
@@ -88,7 +96,7 @@ function Navbar({ onLogout }) {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '1px solid rgba(255,255,255,0.15)',
         }}>
-          <Train size={22} color="#ffffff" />
+          <TrainFront size={22} color="#ffffff" strokeWidth={1.8} />
         </div>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>
@@ -141,10 +149,10 @@ function Navbar({ onLogout }) {
               top: '100%',
               marginTop: 8,
               width: 320,
-              background: '#ffffff',
+              background: dropdownBg,
               borderRadius: 12,
               boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-              border: '1px solid #e5e7eb',
+              border: `1px solid ${dropdownBorder}`,
               zIndex: 100,
               overflow: 'hidden',
             }}>
@@ -168,12 +176,12 @@ function Navbar({ onLogout }) {
               </div>
 
               {/* Alert List */}
-              <div style={{ maxHeight: 320, overflowY: 'auto', background: '#f8fafc' }}>
+              <div style={{ maxHeight: 320, overflowY: 'auto', background: listBg }}>
                 {alerts.length === 0 ? (
                   <div style={{
                     padding: 24,
                     textAlign: 'center',
-                    color: '#64748b',
+                    color: mutedColor,
                     fontSize: 13,
                     fontWeight: 500,
                   }}>
@@ -185,11 +193,11 @@ function Navbar({ onLogout }) {
                       key={index}
                       style={{
                         padding: 16,
-                        borderBottom: '1px solid #e2e8f0',
+                        borderBottom: `1px solid ${itemBorder}`,
                         cursor: 'default',
                         transition: 'background-color 0.2s',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = hoverItemBg}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
                       <div style={{
@@ -198,10 +206,10 @@ function Navbar({ onLogout }) {
                         alignItems: 'flex-start',
                         marginBottom: 4,
                       }}>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{alert.id} Delay</span>
-                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{alert.time}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: titleColor }}>{alert.id} Delay</span>
+                        <span style={{ fontSize: 11, color: mutedColor }}>{alert.time}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: '#64748b' }}>{alert.message}</p>
+                      <p style={{ fontSize: 12, color: mutedColor }}>{alert.message}</p>
                     </div>
                   ))
                 )}
@@ -211,15 +219,20 @@ function Navbar({ onLogout }) {
               {alerts.length > 0 && (
                 <div style={{
                   padding: 8,
-                  background: '#ffffff',
-                  borderTop: '1px solid #e2e8f0',
+                  background: dropdownBg,
+                  borderTop: `1px solid ${itemBorder}`,
                   textAlign: 'center',
                 }}>
                   <button
-                    onClick={() => setAlerts([])}
+                    onClick={() => {
+                      const newAcknowledged = new Set(acknowledgedDelays)
+                      alerts.forEach((a) => newAcknowledged.add(a.id))
+                      setAcknowledgedDelays(newAcknowledged)
+                      setAlerts([])
+                    }}
                     style={{
                       fontSize: 12,
-                      color: '#64748b',
+                      color: mutedColor,
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -227,8 +240,8 @@ function Navbar({ onLogout }) {
                       transition: 'color 0.2s',
                       padding: 4,
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = '#1e293b'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                    onMouseEnter={(e) => e.currentTarget.style.color = titleColor}
+                    onMouseLeave={(e) => e.currentTarget.style.color = mutedColor}
                   >
                     Acknowledge All
                   </button>
@@ -249,26 +262,30 @@ function Navbar({ onLogout }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontWeight: 700, fontSize: 13, color: '#fff',
             border: '2px solid rgba(255,255,255,0.2)',
-          }}>{user.initials}</div>
+          }}>{String(storedUser.name || 'Admin').charAt(0).toUpperCase()}</div>
           <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{user.name}</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{user.role}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#ffffff' }}>{storedUser.name || 'Admin'}</span>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{storedUser.role || 'System Operator'}</span>
           </div>
           <ChevronDown size={15} color="rgba(255,255,255,0.6)" />
 
           {showMenu && (
             <div style={{
               position: 'absolute', top: '100%', right: 0, marginTop: 8,
-              background: '#fff', borderRadius: 12, padding: 8,
+              background: dropdownBg, borderRadius: 12, padding: 8,
               boxShadow: '0 8px 32px rgba(0,0,0,0.2)', minWidth: 180,
-              border: '1px solid #e5e7eb', zIndex: 100,
+              border: `1px solid ${dropdownBorder}`, zIndex: 100,
             }}>
+                <ThemeToggle
+                isDarkMode={isDarkMode}
+                toggleTheme={() => setIsDarkMode(!isDarkMode)}
+                />
               <button
                 onClick={onLogout}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 12px', borderRadius: 8, border: 'none',
-                  background: 'transparent', cursor: 'pointer', color: '#ef4444',
+                  background: 'transparent', cursor: 'pointer', color: isDarkMode ? '#f87171' : '#ef4444',
                   fontSize: 13, fontWeight: 500, fontFamily: 'DM Sans, sans-serif',
                 }}
               >

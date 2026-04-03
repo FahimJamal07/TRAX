@@ -95,19 +95,19 @@ function Signup() {
         </div>
 
         {/* ── Card ────────────────────────────────────────────────────────── */}
-        <div style={{ background: '#ffffff', borderRadius: 20, padding: 36, boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
+        <div className="surface-card surface-modal" style={{ borderRadius: 20, padding: 36, boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f1f35', marginBottom: 24 }}>Create New Account</h2>
 
           {/* Error banner */}
           {error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13, borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+            <div className="sim-alert sim-alert-danger" style={{ fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>
               {error}
             </div>
           )}
 
           {/* Success toast */}
           {success && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontSize: 13, borderRadius: 10, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="sim-alert sim-alert-success" style={{ fontSize: 13, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle size={15} />
               {success}
             </div>

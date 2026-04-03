@@ -50,12 +50,12 @@ export default function Settings() {
     }
   }
 
-  const card = { background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 28, marginBottom: 0 }
+  const card = { borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', padding: 28, marginBottom: 0 }
   const inp = { border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', width: '100%' }
   const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div className="settings-page" style={{ maxWidth: 760 }}>
       <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35' }}>System Settings</h2>
         <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Configure network parameters and optimization behavior</p>
@@ -63,14 +63,14 @@ export default function Settings() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Section Config */}
-        <div style={card}>
+        <div className="surface-card surface-panel" style={card}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Section Configuration</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <div>
               <label style={lbl}>Line Type</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 {['single', 'double'].map(t => (
-                  <button key={t} onClick={() => set('lineType', t)} style={{ flex: 1, padding: '9px', borderRadius: 10, border: `1.5px solid ${s.lineType === t ? '#2563eb' : '#e5e7eb'}`, background: s.lineType === t ? '#eff6ff' : '#fff', color: s.lineType === t ? '#2563eb' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
+                  <button key={t} onClick={() => set('lineType', t)} className={s.lineType === t ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40' : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'} style={{ flex: 1, padding: '9px', borderRadius: 10, border: `1.5px solid ${s.lineType === t ? '#2563eb' : '#e5e7eb'}`, background: s.lineType === t ? '#eff6ff' : '#fff', color: s.lineType === t ? '#2563eb' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
@@ -88,7 +88,7 @@ export default function Settings() {
         </div>
 
         {/* Priority Weights */}
-        <div style={card}>
+        <div className="surface-card surface-panel" style={card}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 6, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Priority Weights</h3>
           <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Higher weight = higher scheduling priority during conflicts</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
@@ -109,7 +109,7 @@ export default function Settings() {
         </div>
 
         {/* Optimization Mode */}
-        <div style={card}>
+        <div className="surface-card surface-panel" style={card}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Optimization Mode</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             {[
@@ -117,9 +117,9 @@ export default function Settings() {
               { value: 'maximize_throughput', label: 'Maximize Throughput', desc: 'Maximize trains handled per hour', icon: '📈' },
               { value: 'balanced', label: 'Balanced Mode', desc: 'Balance delay reduction with throughput', icon: '⚖️' },
             ].map(mode => (
-              <button key={mode.value} onClick={() => set('mode', mode.value)} style={{ textAlign: 'left', padding: 16, borderRadius: 14, border: `2px solid ${s.mode === mode.value ? '#2563eb' : '#e5e7eb'}`, background: s.mode === mode.value ? '#eff6ff' : '#fafbfc', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
+              <button key={mode.value} onClick={() => set('mode', mode.value)} className={s.mode === mode.value ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/40' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700'} style={{ textAlign: 'left', padding: 16, borderRadius: 14, border: `2px solid ${s.mode === mode.value ? '#2563eb' : '#e5e7eb'}`, background: s.mode === mode.value ? '#eff6ff' : '#fafbfc', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
                 <div style={{ fontSize: 20, marginBottom: 8 }}>{mode.icon}</div>
-                <p style={{ fontSize: 13, fontWeight: 700, color: s.mode === mode.value ? '#2563eb' : '#374151' }}>{mode.label}</p>
+                <p className={s.mode === mode.value ? 'text-blue-600 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'} style={{ fontSize: 13, fontWeight: 700, color: s.mode === mode.value ? '#2563eb' : '#374151' }}>{mode.label}</p>
                 <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, lineHeight: 1.4 }}>{mode.desc}</p>
               </button>
             ))}
@@ -127,7 +127,7 @@ export default function Settings() {
         </div>
 
         {/* System Reset */}
-        <div style={card}>
+        <div className="surface-card surface-panel" style={card}>
           <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>System Data</h3>
           <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Clear persistent simulation data from local storage to reset dashboards to default.</p>
           <button

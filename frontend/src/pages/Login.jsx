@@ -50,11 +50,17 @@ function Login() {
 
       const data = await res.json()
       const token = data.access_token
+      const userRole = data.role ?? 'controller'
+      const userProfile = { name: username, role: userRole }
+
       sessionStorage.setItem('trax_token', token)
+      sessionStorage.setItem('trax_user', JSON.stringify(userProfile))
       // The backend now includes "role" in the token response.
       // Store it separately so Sidebar and ProtectedRoute can read it
       // without having to decode the JWT on the client.
-      localStorage.setItem('trax_role', data.role ?? 'controller')
+      localStorage.setItem('trax_role', userRole)
+      localStorage.setItem('trax_user', JSON.stringify(userProfile))
+      window.dispatchEvent(new Event('trax-auth-update'))
       // Hard redirect so ProtectedRoute re-evaluates with the new token
       window.location.href = '/dashboard'
     } catch {
@@ -73,11 +79,11 @@ function Login() {
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Indian Railways — Smart Traffic Management</p>
         </div>
 
-        <div style={{ background: '#ffffff', borderRadius: 20, padding: 36, boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
+        <div className="surface-card surface-modal" style={{ borderRadius: 20, padding: 36, boxShadow: '0 24px 64px rgba(0,0,0,0.3)' }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f1f35', marginBottom: 24 }}>Sign In to Your Account</h2>
 
           {error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 13, borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>{error}</div>
+            <div className="sim-alert sim-alert-danger" style={{ fontSize: 13, padding: '10px 14px', marginBottom: 16 }}>{error}</div>
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

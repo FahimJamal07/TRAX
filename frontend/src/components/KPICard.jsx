@@ -1,16 +1,13 @@
 import React from 'react'
 
-function KPICard({ title, value, unit, subtitle, icon, iconBg, valueColor }) {
+function KPICard({ title, value, unit, subtitle, icon, iconBg, valueColor, className = '' }) {
   return (
-    <div style={{
-      background: '#ffffff',
+    <div className={`surface-card kpi ${className}`.trim()} style={{
       borderRadius: 16,
       padding: '20px 24px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
       display: 'flex',
       alignItems: 'center',
       gap: 16,
-      border: '1px solid rgba(0,0,0,0.05)',
     }}>
       <div style={{
         width: 52, height: 52, borderRadius: 14,
@@ -18,7 +15,12 @@ function KPICard({ title, value, unit, subtitle, icon, iconBg, valueColor }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 24, flexShrink: 0,
       }}>
-        {icon}
+        {React.isValidElement(icon)
+          ? React.cloneElement(icon, {
+              size: icon.props.size || 22,
+              strokeWidth: icon.props.strokeWidth || 1.8,
+            })
+          : icon}
       </div>
       <div style={{ flex: 1 }}>
         <p style={{ fontSize: 12, color: '#64748b', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{title}</p>

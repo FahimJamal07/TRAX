@@ -9,6 +9,19 @@ function Layout({ onLogout }) {
   const [freightDelay, setFreightDelay] = React.useState('')
   const [optimizedSchedule, setOptimizedSchedule] = React.useState(null)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false)
+  const [isDarkMode, setIsDarkMode] = React.useState(localStorage.getItem('theme') === 'dark')
+
+  React.useEffect(() => {
+    const root = window.document.documentElement
+    if (isDarkMode) {
+      root.classList.add('dark')
+      localStorage.setItem('theme', 'dark')
+    } else {
+      root.classList.remove('dark')
+      localStorage.setItem('theme', 'light')
+    }
+  }, [isDarkMode])
 
   const handleOptimize = async () => {
     setIsLoading(true)
@@ -39,12 +52,15 @@ function Layout({ onLogout }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f0f4f8' }}>
-      <Navbar onLogout={onLogout} />
+    <div className="app-shell" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f0f4f8' }}>
+      <Navbar onLogout={onLogout} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <Sidebar />
-        <main style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f0f4f8' }}>
-          <Outlet context={{ expressDelay, setExpressDelay, freightDelay, setFreightDelay, optimizedSchedule, isLoading, handleOptimize }} />
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+        />
+        <main className="app-main" style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f0f4f8' }}>
+          <Outlet context={{ expressDelay, setExpressDelay, freightDelay, setFreightDelay, optimizedSchedule, isLoading, handleOptimize, isDarkMode }} />
         </main>
       </div>
     </div>

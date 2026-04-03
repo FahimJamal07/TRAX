@@ -17,6 +17,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     ForeignKey,
+    Float,
     Integer,
     String,
 )
@@ -37,10 +38,16 @@ class Track(Base):
 
     Columns
     -------
-    id         : Unique identifier (e.g., 'A-B-1').
-    section_id : The logical section this track belongs to (e.g., 'A-B').
-                 Indexed for fast lookup.
-    lane       : Integer representing parallel lane index (e.g., 1 or 2).
+    id               : Unique identifier (e.g., 'A-B-1').
+    section_id       : The logical section this track belongs to (e.g., 'A-B').
+                       Indexed for fast lookup.
+    lane             : Integer representing parallel lane index (e.g., 1 or 2).
+    track_type       : Classification label (e.g., 'mainline', 'loop', 'siding').
+    source_node      : Directed-graph start vertex for this segment.
+    target_node      : Directed-graph end vertex for this segment.
+    length_meters    : Physical segment length used for traversal-time calculations.
+    speed_limit_kmh  : Segment speed cap used by the optimizer.
+    is_bidirectional : True when the segment can be traversed both directions.
     """
 
     __tablename__ = "tracks"
@@ -49,9 +56,18 @@ class Track(Base):
     section_id = Column(String, index=True, nullable=False)
     lane = Column(Integer, nullable=False)
     track_type = Column(String, nullable=False, default="mainline")
+    source_node = Column(String, index=True, nullable=False)
+    target_node = Column(String, index=True, nullable=False)
+    length_meters = Column(Float, nullable=False)
+    speed_limit_kmh = Column(Float, nullable=False)
+    is_bidirectional = Column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:
-        return f"<Track id={self.id!r} section={self.section_id!r} lane={self.lane} type={self.track_type!r}>"
+        return (
+            f"<Track id={self.id!r} section={self.section_id!r} lane={self.lane} "
+            f"type={self.track_type!r} source={self.source_node!r} "
+            f"target={self.target_node!r} vmax={self.speed_limit_kmh}kmh>"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +86,8 @@ class Train(Base):
     source      : Origin city / station name.
     destination : Terminal city / station name.
     status      : Current operational state. Defaults to "On Time".
+    scheduled_departure : ISO-8601 departure timestamp used by time-aware planning.
+    speed_multiplier    : Relative traversal factor (lower means faster).
     """
 
     __tablename__ = "trains"
@@ -91,6 +109,12 @@ class Train(Base):
 
     # Operational status — can be updated by simulation runs.
     status = Column(String, nullable=False, default="On Time")
+
+    # Planned departure timestamp stored as an ISO-8601 string for SQLite simplicity.
+    scheduled_departure = Column(String, nullable=True)
+
+    # Physics parameter used by the optimizer to represent traversal speed.
+    speed_multiplier = Column(Float, nullable=False, default=1.0)
 
     # One-to-many: a single train can have multiple schedule entries
     # (e.g., one per day or one per section).
@@ -121,6 +145,8 @@ class Schedule(Base):
     scheduled_arrival : Minutes from hour 0 (midnight). E.g., 10:00 = 600.
     delay_minutes     : Minutes of delay accumulated at this entry (default 0).
     is_conflict       : True when the solver detects a track conflict here.
+    arrival_time      : ISO-8601 arrival timestamp for real-world planning.
+    departure_time    : ISO-8601 departure timestamp for real-world planning.
     """
 
     __tablename__ = "schedules"
@@ -145,6 +171,10 @@ class Schedule(Base):
 
     # Delay injected or computed by the optimizer.
     delay_minutes = Column(Integer, nullable=False, default=0)
+
+    # Time-aware schedule stamps stored as ISO-8601 strings.
+    arrival_time = Column(String, nullable=True)
+    departure_time = Column(String, nullable=True)
 
     # Flag set by the conflict-detection logic in the optimizer.
     is_conflict = Column(Boolean, nullable=False, default=False)

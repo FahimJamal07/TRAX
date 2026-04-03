@@ -12,7 +12,696 @@ body {
   color: #1a2332;
 }
 
+.surface-card,
+.surface-panel,
+.surface-modal,
+.surface-dropdown,
+.surface-card-white {
+  background: #ffffff;
+  color: #1a2332;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.surface-card-secondary,
+.surface-panel-secondary {
+  background: #f8fafc;
+  color: #1a2332;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 2px 10px rgba(15,31,53,0.04);
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* Settings-page light theme baseline applied app-wide for cards and controls */
+html:not(.dark) .dashboard-page [class*='bg-white'][class*='rounded'],
+html:not(.dark) .simulation-page [class*='bg-white'][class*='rounded'],
+html:not(.dark) .reports-page [class*='bg-white'][class*='rounded'],
+html:not(.dark) .trainlist-page [class*='bg-white'][class*='rounded'],
+html:not(.dark) .sectionmap-page [class*='bg-white'][class*='rounded'] {
+  background: #ffffff !important;
+  border-color: #e5e7eb !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06) !important;
+}
+
+html:not(.dark) .dashboard-page input,
+html:not(.dark) .dashboard-page select,
+html:not(.dark) .simulation-page input,
+html:not(.dark) .simulation-page select,
+html:not(.dark) .reports-page input,
+html:not(.dark) .reports-page select,
+html:not(.dark) .trainlist-page input,
+html:not(.dark) .trainlist-page select,
+html:not(.dark) .sectionmap-page input,
+html:not(.dark) .sectionmap-page select {
+  background: #ffffff !important;
+  color: #374151 !important;
+  border-color: #e5e7eb !important;
+}
+
+html:not(.dark) .dashboard-page input:focus,
+html:not(.dark) .dashboard-page select:focus,
+html:not(.dark) .simulation-page input:focus,
+html:not(.dark) .simulation-page select:focus,
+html:not(.dark) .reports-page input:focus,
+html:not(.dark) .reports-page select:focus,
+html:not(.dark) .trainlist-page input:focus,
+html:not(.dark) .trainlist-page select:focus,
+html:not(.dark) .sectionmap-page input:focus,
+html:not(.dark) .sectionmap-page select:focus {
+  border-color: #2563eb !important;
+  outline: none;
+}
+
+html:not(.dark) .dashboard-page [class*='bg-slate-50'][class*='rounded'],
+html:not(.dark) .simulation-page [class*='bg-slate-50'][class*='rounded'],
+html:not(.dark) .reports-page [class*='bg-slate-50'][class*='rounded'],
+html:not(.dark) .trainlist-page [class*='bg-slate-50'][class*='rounded'],
+html:not(.dark) .sectionmap-page [class*='bg-slate-50'][class*='rounded'] {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Explicit semantic status/alert styling to prevent class conflict regressions */
+.modal-info-row {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  width: 100%;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.status-footer,
+.status-chip,
+.alert-surface {
+  border-radius: 0.5rem;
+}
+
+.status-chip {
+  padding: 0.75rem;
+  width: 100%;
+  min-height: 3.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.train-type-badge {
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.train-type-express {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.train-type-passenger {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.train-type-freight {
+  background: #fffbeb;
+  color: #f59e0b;
+  border-color: #fde68a;
+}
+
+.train-type-mail {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.train-type-neutral {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.train-tag-high,
+.train-tag-delayed {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.train-tag-medium,
+.train-tag-waiting {
+  background: #fffbeb;
+  color: #f59e0b;
+  border-color: #fde68a;
+}
+
+.train-tag-low,
+.train-tag-on-time {
+  background: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.train-tag-moving {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.train-tag-scheduled {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+html.dark .train-type-badge {
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+html.dark .train-type-express {
+  background: rgba(127, 29, 29, 0.28) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark .train-type-passenger {
+  background: rgba(30, 64, 175, 0.22) !important;
+  color: #93c5fd !important;
+}
+
+html.dark .train-type-freight {
+  background: rgba(146, 64, 14, 0.22) !important;
+  color: #fcd34d !important;
+}
+
+html.dark .train-type-mail {
+  background: rgba(6, 78, 59, 0.22) !important;
+  color: #86efac !important;
+}
+
+html.dark .train-tag-high,
+html.dark .train-tag-delayed {
+  background: rgba(127, 29, 29, 0.28) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark .train-tag-medium,
+html.dark .train-tag-waiting {
+  background: rgba(120, 53, 15, 0.24) !important;
+  color: #fcd34d !important;
+}
+
+html.dark .train-tag-low,
+html.dark .train-tag-on-time {
+  background: rgba(6, 78, 59, 0.22) !important;
+  color: #86efac !important;
+}
+
+html.dark .train-tag-moving {
+  background: rgba(30, 64, 175, 0.22) !important;
+  color: #93c5fd !important;
+}
+
+html.dark .train-tag-scheduled {
+  background: rgba(30, 41, 59, 0.5) !important;
+  color: #cbd5e1 !important;
+}
+
+.kpi {
+  border-radius: 0.875rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+.kpi-blue {
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
+}
+
+.kpi-emerald {
+  background: #ecfdf5;
+  color: #16a34a;
+  border-color: #bbf7d0;
+}
+
+.kpi-amber {
+  background: #fffbeb;
+  color: #f59e0b;
+  border-color: #fde68a;
+}
+
+.kpi-red {
+  background: #fef2f2;
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+html.dark .kpi {
+  box-shadow: none;
+}
+
+html.dark .kpi-blue {
+  background: rgba(30, 64, 175, 0.22) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+}
+
+html.dark .kpi-emerald {
+  background: rgba(6, 78, 59, 0.22) !important;
+  color: #86efac !important;
+  border-color: rgba(16, 185, 129, 0.32) !important;
+}
+
+html.dark .kpi-amber {
+  background: rgba(120, 53, 15, 0.22) !important;
+  color: #fcd34d !important;
+  border-color: rgba(245, 158, 11, 0.32) !important;
+}
+
+html.dark .kpi-red {
+  background: rgba(127, 29, 29, 0.28) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+.whatif-card {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 14px rgba(0,0,0,0.05);
+}
+
+.whatif-card-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.whatif-card-info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.whatif-card-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.whatif-card-neutral {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+html.dark .whatif-card {
+  box-shadow: none;
+}
+
+html.dark .whatif-card-danger {
+  background: rgba(127, 29, 29, 0.26) !important;
+  border-color: rgba(127, 29, 29, 0.42) !important;
+}
+
+html.dark .whatif-card-info {
+  background: rgba(30, 64, 175, 0.18) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+html.dark .whatif-card-warning {
+  background: rgba(120, 53, 15, 0.2) !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+html.dark .whatif-card-neutral {
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+.status-footer-danger,
+.status-chip-danger,
+.alert-critical {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.status-footer-warning,
+.status-chip-warning,
+.alert-warning {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.status-footer-success,
+.status-chip-success,
+.alert-success {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #bbf7d0;
+}
+
+.sim-alert,
+.sim-note,
+.sim-metric-card,
+.sim-toast {
+  border-radius: 0.75rem;
+}
+
+.sim-alert-danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+}
+
+.sim-alert-success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+}
+
+.sim-alert-warning {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #c2410c;
+}
+
+.sim-alert-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
+.sim-metric-danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #ef4444;
+}
+
+.sim-metric-info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
+.sim-metric-warning {
+  background: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #f59e0b;
+}
+
+.sim-metric-neutral {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #374151;
+}
+
+html.dark .sim-alert-danger,
+html.dark .sim-alert-success,
+html.dark .sim-alert-warning,
+html.dark .sim-alert-info,
+html.dark .sim-metric-danger,
+html.dark .sim-metric-info,
+html.dark .sim-metric-warning,
+html.dark .sim-metric-neutral,
+html.dark .sim-note,
+html.dark .sim-toast {
+  box-shadow: none !important;
+}
+
+html.dark .sim-alert-danger {
+  background: rgba(127, 29, 29, 0.24) !important;
+  border-color: rgba(127, 29, 29, 0.42) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark .sim-alert-success {
+  background: rgba(6, 78, 59, 0.24) !important;
+  border-color: rgba(6, 95, 70, 0.42) !important;
+  color: #86efac !important;
+}
+
+html.dark .sim-alert-warning {
+  background: rgba(120, 53, 15, 0.22) !important;
+  border-color: rgba(146, 64, 14, 0.42) !important;
+  color: #fcd34d !important;
+}
+
+html.dark .sim-alert-info {
+  background: rgba(30, 64, 175, 0.18) !important;
+  border-color: rgba(59, 130, 246, 0.35) !important;
+  color: #93c5fd !important;
+}
+
+html.dark .sim-metric-danger {
+  background: rgba(127, 29, 29, 0.18) !important;
+  border-color: rgba(127, 29, 29, 0.35) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark .sim-metric-info {
+  background: rgba(30, 64, 175, 0.16) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+html.dark .sim-metric-warning {
+  background: rgba(120, 53, 15, 0.16) !important;
+  border-color: rgba(245, 158, 11, 0.28) !important;
+  color: #fcd34d !important;
+}
+
+html.dark .sim-metric-neutral {
+  background: rgba(30, 41, 59, 0.5) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .sim-note {
+  background: rgba(30, 64, 175, 0.14) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  color: #93c5fd !important;
+}
+
+html.dark .sim-toast {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+html.dark .modal-info-row {
+  background: rgba(30, 41, 59, 0.45) !important;
+  border-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dark .status-footer-danger,
+html.dark .status-chip-danger,
+html.dark .alert-critical {
+  background: rgba(127, 29, 29, 0.3) !important;
+  color: #f87171 !important;
+  border-color: rgba(127, 29, 29, 0.5) !important;
+}
+
+html.dark .status-footer-warning,
+html.dark .status-chip-warning,
+html.dark .alert-warning {
+  background: rgba(120, 53, 15, 0.3) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(146, 64, 14, 0.5) !important;
+}
+
+html.dark .status-footer-success,
+html.dark .status-chip-success,
+html.dark .alert-success {
+  background: rgba(6, 78, 59, 0.3) !important;
+  color: #34d399 !important;
+  border-color: rgba(6, 95, 70, 0.5) !important;
+}
+
+/* Dark mode border cleanup for utility-border classes used across pages */
+html.dark .dashboard-page [class*='border-slate-100'],
+html.dark .dashboard-page [class*='border-slate-200'],
+html.dark .simulation-page [class*='border-slate-100'],
+html.dark .simulation-page [class*='border-slate-200'],
+html.dark .reports-page [class*='border-slate-100'],
+html.dark .reports-page [class*='border-slate-200'],
+html.dark .trainlist-page [class*='border-slate-100'],
+html.dark .trainlist-page [class*='border-slate-200'],
+html.dark .sectionmap-page [class*='border-slate-100'],
+html.dark .sectionmap-page [class*='border-slate-200'],
+html.dark .surface-modal [class*='border-slate-100'],
+html.dark .surface-modal [class*='border-slate-200'],
+html.dark .surface-modal [class*='border-white'],
+html.dark .dashboard-page [class*='border-white'],
+html.dark .simulation-page [class*='border-white'],
+html.dark .reports-page [class*='border-white'],
+html.dark .trainlist-page [class*='border-white'],
+html.dark .sectionmap-page [class*='border-white'] {
+  border-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dark .dashboard-page [class*='border-b'][class*='border-slate-100'],
+html.dark .dashboard-page [class*='border-b'][class*='border-slate-200'],
+html.dark .trainlist-page [class*='border-b'][class*='border-slate-100'],
+html.dark .trainlist-page [class*='border-b'][class*='border-slate-200'] {
+  border-bottom-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+/* Brighter form labels for dark-mode Simulation cards */
+html.dark .simulation-page label {
+  color: #cbd5e1 !important;
+}
+
+.surface-subtext {
+  color: #64748b;
+}
+
+html.dark body {
+  background: #0b1220;
+  color: #e2e8f0;
+}
+
+html.dark .app-shell,
+html.dark .app-main {
+  background: #0b1220 !important;
+}
+
+html.dark .sidebar-root {
+  background: linear-gradient(180deg, #020617 0%, #111827 100%) !important;
+}
+
+html.dark .dashboard-page > div,
+html.dark .trainlist-page > div,
+html.dark .sectionmap-page > div {
+  color: #e2e8f0;
+}
+
+html.dark .dashboard-page table,
+html.dark .trainlist-page table {
+  background: #0f172a !important;
+}
+
+html.dark .dashboard-page th,
+html.dark .dashboard-page td,
+html.dark .trainlist-page th,
+html.dark .trainlist-page td {
+  color: #cbd5e1 !important;
+  border-color: #1e293b !important;
+}
+
+html.dark .dashboard-page h2,
+html.dark .dashboard-page h3,
+html.dark .trainlist-page h2,
+html.dark .trainlist-page h3,
+html.dark .sectionmap-page h2,
+html.dark .sectionmap-page h3 {
+  color: #f8fafc !important;
+}
+
+html.dark .dashboard-page p,
+html.dark .trainlist-page p,
+html.dark .sectionmap-page p,
+html.dark .dashboard-page span,
+html.dark .trainlist-page span,
+html.dark .sectionmap-page span {
+  color: #94a3b8;
+}
+
+html.dark .dashboard-page > div > div,
+html.dark .trainlist-page > div > div,
+html.dark .sectionmap-page > div > div {
+  border-color: #1e293b !important;
+}
+
+html.dark .surface-card,
+html.dark .surface-panel,
+html.dark .surface-modal,
+html.dark .surface-dropdown,
+html.dark .surface-card-white {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .surface-card-secondary,
+html.dark .surface-panel-secondary {
+  background: #111827 !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .surface-card h1,
+html.dark .surface-card h2,
+html.dark .surface-card h3,
+html.dark .surface-card p,
+html.dark .surface-card span,
+html.dark .surface-card label,
+html.dark .surface-panel h1,
+html.dark .surface-panel h2,
+html.dark .surface-panel h3,
+html.dark .surface-panel p,
+html.dark .surface-panel span,
+html.dark .surface-panel label,
+html.dark .surface-modal h1,
+html.dark .surface-modal h2,
+html.dark .surface-modal h3,
+html.dark .surface-modal p,
+html.dark .surface-modal span,
+html.dark .surface-modal label {
+  color: #e2e8f0 !important;
+}
+
+html.dark .surface-subtext,
+html.dark .surface-subtext span,
+html.dark .surface-subtext p,
+html.dark .surface-panel .text-slate-500,
+html.dark .surface-panel .text-slate-600,
+html.dark .surface-card .text-slate-500,
+html.dark .surface-card .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+html.dark .surface-input,
+html.dark .surface-select,
+html.dark .surface-filter {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .surface-table thead th {
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .surface-table tbody td {
+  color: #cbd5e1 !important;
+  border-color: #1e293b !important;
+}
+
+html.dark .dashboard-page input,
+html.dark .dashboard-page select,
+html.dark .trainlist-page input,
+html.dark .trainlist-page select {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+
+html.dark .dashboard-page svg,
+html.dark .sectionmap-page svg {
+  filter: saturate(0.95) brightness(0.95);
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: #f0f4f8; }
 ::-webkit-scrollbar-thumb { background: #c8d6e5; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #a8b8cc; }
+
+html.dark ::-webkit-scrollbar-track { background: #111827; }
+html.dark ::-webkit-scrollbar-thumb { background: #334155; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }

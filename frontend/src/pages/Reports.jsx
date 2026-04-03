@@ -1,15 +1,20 @@
 import React, { useState, useEffect } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { reportDelayData, throughputData, conflictData, sectionUtilization } from '../data/dummyData'
 import { Download, FileText } from 'lucide-react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { apiFetch } from '../utils/api'
+import { getChartTooltipProps } from '../utils/chartTooltip'
 
-const card = { background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 24 }
+const card = { padding: 24 }
 
 export default function Reports() {
+  const { isDarkMode } = useOutletContext() || { isDarkMode: false }
+  const chartTooltipProps = getChartTooltipProps(isDarkMode)
   const [liveSchedule, setLiveSchedule] = useState(null)
+  const [kpiSummary, setKpiSummary] = useState(null)
   const [trains, setTrains] = useState([])
   const [fetchError, setFetchError] = useState(null)
 
@@ -17,9 +22,14 @@ export default function Reports() {
   useEffect(() => {
     const fetchSchedule = () => {
       const storedSchedule = localStorage.getItem('trax_live_schedule')
+      const storedKpis = localStorage.getItem('trax_kpi_summary')
       if (storedSchedule) {
         try { setLiveSchedule(JSON.parse(storedSchedule)) }
         catch (e) { console.error('Failed to parse schedule:', e) }
+      }
+      if (storedKpis) {
+        try { setKpiSummary(JSON.parse(storedKpis)) }
+        catch (e) { console.error('Failed to parse KPI summary:', e) }
       }
     }
     fetchSchedule()
@@ -48,21 +58,18 @@ export default function Reports() {
     return () => clearInterval(interval) // Cleanup on unmount
   }, [])
 
-  const totalDelays = liveSchedule
-    ? (liveSchedule?.Express_Train?.total_delay_mins || 0) + (liveSchedule?.Freight_Train?.total_delay_mins || 0)
-    : 0;
+  const dynamicTotalDelays = liveSchedule
+    ? Object.values(liveSchedule).reduce((sum, row) => sum + (Number(row?.total_delay_mins) || 0), 0)
+    : 0
 
-  const currentDelayReduction = liveSchedule
-    ? ((125 - totalDelays) / 125 * 100).toFixed(1) + '%'
-    : '58.6%';
-
-  const currentOnTime = liveSchedule
-    ? (totalDelays > 0 ? '65%' : '88%')
-    : '73%';
-
-  const currentConflictsResolved = liveSchedule
-    ? (totalDelays > 0 ? '22' : '26')
-    : '24';
+  const totalDelays = Number(kpiSummary?.total_delays_mins ?? dynamicTotalDelays)
+  const currentDelayReduction = kpiSummary
+    ? `${Number(kpiSummary.delay_reduction_percentage ?? 0).toFixed(1)}%`
+    : `${Math.max(0, ((125 - totalDelays) / 125) * 100).toFixed(1)}%`
+  const currentOnTime = kpiSummary
+    ? `${Number(kpiSummary.on_time_percentage ?? 0).toFixed(1)}%`
+    : (totalDelays > 0 ? '65.0%' : '88.0%')
+  const currentConflictsResolved = String(Number(kpiSummary?.conflicts_resolved ?? 0))
 
   // ── CSV export ──────────────────────────────────────────────────────────────
   const exportToCSV = () => {
@@ -105,15 +112,15 @@ export default function Reports() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="reports-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35' }}>Reports & Analytics</h2>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Weekly performance metrics and optimization impact</p>
+          <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 20, fontWeight: 700 }}>Reports & Analytics</h2>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 2 }}>Weekly performance metrics and optimization impact</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {fetchError && (
-            <span style={{ fontSize: 12, color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '5px 10px' }}>
+            <span className="sim-alert sim-alert-danger" style={{ fontSize: 12, padding: '5px 10px' }}>
               ⚠️ {fetchError}
             </span>
           )}
@@ -139,26 +146,26 @@ export default function Reports() {
       {/* Summary KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         {[
-          { label: 'Avg Delay Reduction', value: currentDelayReduction, color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-          { label: 'On-Time Arrivals', value: currentOnTime, color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-          { label: 'Conflicts Resolved', value: currentConflictsResolved, color: '#f59e0b', bg: '#fffbeb', border: '#fed7aa' },
+          { label: 'Avg Delay Reduction', value: currentDelayReduction, className: 'kpi kpi-blue' },
+          { label: 'On-Time Arrivals', value: currentOnTime, className: 'kpi kpi-emerald' },
+          { label: 'Conflicts Resolved', value: currentConflictsResolved, className: 'kpi kpi-amber' },
         ].map(item => (
-          <div key={item.label} style={{ background: item.bg, border: `1px solid ${item.border}`, borderRadius: 14, padding: '20px 24px', textAlign: 'center' }}>
-            <p style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</p>
-            <p style={{ fontSize: 32, fontWeight: 800, color: item.color, marginTop: 6 }}>{item.value}</p>
+          <div key={item.label} className={item.className} style={{ borderRadius: 14, padding: '20px 24px', textAlign: 'center' }}>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</p>
+            <p className={item.label === 'Avg Delay Reduction' ? 'text-blue-600 dark:text-blue-400' : item.label === 'On-Time Arrivals' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'} style={{ fontSize: 32, fontWeight: 800, marginTop: 6 }}>{item.value}</p>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-        <div style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16 }}>Delay Analytics — Before vs After</h3>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={card}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Delay Analytics — Before vs After</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={reportDelayData} barSize={18}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Bar dataKey="before" name="Before (min)" fill="#ef4444" radius={[4, 4, 0, 0]} />
               <Bar dataKey="after" name="After (min)" fill="#2563eb" radius={[4, 4, 0, 0]} />
@@ -166,34 +173,34 @@ export default function Reports() {
           </ResponsiveContainer>
         </div>
 
-        <div style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16 }}>Throughput Per Hour</h3>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={card}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Throughput Per Hour</h3>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={throughputData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="hour" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Line type="monotone" dataKey="trains" name="Trains/Hour" stroke="#2563eb" strokeWidth={2.5} dot={{ r: 5, fill: '#2563eb' }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16 }}>Daily Conflict Count</h3>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={card}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Daily Conflict Count</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={conflictData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Bar dataKey="conflicts" name="Conflicts" fill="#f59e0b" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 20 }}>Section Utilization %</h3>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={card}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 20 }}>Section Utilization %</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {sectionUtilization.map(item => {
               const color = item.utilization > 85 ? '#ef4444' : item.utilization > 65 ? '#f59e0b' : '#22c55e'

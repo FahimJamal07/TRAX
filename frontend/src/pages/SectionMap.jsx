@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { apiFetch } from '../utils/api';
 
 // Coordinates scaled perfectly for the sleek dashboard aesthetic
@@ -37,13 +38,34 @@ const SECTIONS = [
 ];
 
 export default function SectionMap() {
+    const { isDarkMode } = useOutletContext() || { isDarkMode: false };
     const [trains, setTrains] = useState([]);
     const [loading, setLoading] = useState(true);
     const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, data: null });
     const [stationTooltip, setStationTooltip] = useState({ visible: false, x: 0, y: 0, data: null });
+    const [trackTooltip, setTrackTooltip] = useState({ visible: false, x: 0, y: 0, data: null });
     const [selectedBlock, setSelectedBlock] = useState(null);
     const [selectedTrainOverlay, setSelectedTrainOverlay] = useState(null);
     const [selectedStation, setSelectedStation] = useState(null);
+
+    const formatIsoToAmPm = (value) => {
+        if (!value) return '--';
+        const dt = new Date(value);
+        if (Number.isNaN(dt.getTime())) return '--';
+        return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
+    const amPmToMinutes = (value) => {
+        if (!value || value === '--') return Number.POSITIVE_INFINITY;
+        const match = String(value).trim().match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+        if (!match) return Number.POSITIVE_INFINITY;
+        let hours = Number(match[1]);
+        const minutes = Number(match[2]);
+        const meridiem = match[3].toUpperCase();
+        if (hours === 12) hours = 0;
+        if (meridiem === 'PM') hours += 12;
+        return hours * 60 + minutes;
+    };
 
     useEffect(() => {
         const fetchTopology = async () => {
@@ -91,18 +113,50 @@ export default function SectionMap() {
         return acc;
     }, {});
 
-    if (loading) return <div style={{ padding: 40, color: '#64748b', fontWeight: 600 }}>Initializing Visualization...</div>;
+    const buildTrackTooltipData = (trackId) => {
+        const sectionId = trackId.substring(0, 3);
+        const upcomingTrains = trains
+            .filter((train) => {
+                const scheduleRows = Array.isArray(train.schedule) ? train.schedule : [];
+                return scheduleRows.some((s) => s.track_id === trackId) || train.track_id === trackId;
+            })
+            .map((train) => {
+                const scheduleRows = Array.isArray(train.schedule) ? train.schedule : [];
+                const onTrack = scheduleRows.find((s) => s.track_id === trackId);
+                return {
+                    id: train.id,
+                    arrival_time: onTrack?.arrival_time || '--',
+                    arrival_sort_key: amPmToMinutes(onTrack?.arrival_time),
+                };
+            })
+            .sort((a, b) => a.arrival_sort_key - b.arrival_sort_key);
+
+        return { trackId, sectionId, upcomingTrains };
+    };
+
+    const showTrackTooltip = (trackId, clientX, clientY) => {
+        setTrackTooltip({
+            visible: true,
+            x: clientX,
+            y: clientY,
+            data: buildTrackTooltipData(trackId),
+        });
+    };
+
+    const showDualTooltip = Boolean(tooltip.visible && tooltip.data && trackTooltip.visible && trackTooltip.data);
+
+    if (loading) return <div className="text-slate-500 dark:text-slate-400" style={{ padding: 40, fontWeight: 600 }}>Initializing Visualization...</div>;
 
     return (
-        <div style={{ minHeight: '100vh', paddingBottom: 64 }}>
-            <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 32, marginBottom: 32 }}>
+        <div className="sectionmap-page" style={{ minHeight: '100vh', paddingBottom: 64 }}>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ padding: 32, marginBottom: 32 }}>
                 <div style={{ marginBottom: 24 }}>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: '#0f1f35', margin: 0 }}>Section Map</h2>
-                    <p style={{ fontSize: 13, color: '#64748b', marginTop: 4, margin: 0 }}>Live track visualization — click a section for details</p>
+                    <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Section Map</h2>
+                    <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 4, margin: 0 }}>Live track visualization — click a section for details</p>
                 </div>
 
-                <div style={{ width: '100%', overflowX: 'auto', position: 'relative', borderTop: '1px solid #f1f5f9', paddingTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '450px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <p style={{ position: 'absolute', top: 12, left: 0, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#64748b', margin: 0 }}>Track Layout — Zone A</p>
+                <div className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800" style={{ width: '100%', overflowX: 'auto', position: 'relative', borderTop: '1px solid #f1f5f9', paddingTop: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '450px', borderRadius: '8px', borderWidth: '1px' }}>
+                    <p className="text-slate-500 dark:text-slate-400" style={{ position: 'absolute', top: 12, left: 0, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Track Layout — Zone A</p>
                     
                     <svg viewBox="0 60 1200 280" style={{ width: '100%', minWidth: 1100, height: '100%', minHeight: 300 }}>
                         <defs>
@@ -118,7 +172,13 @@ export default function SectionMap() {
                         </defs>
 
                         {/* 1. DRAW ALL PHYSICAL TRACKS */}
-                        {Object.entries(TRACK_LINES).map(([trackId, coords]) => {
+                        {Object.entries(TRACK_LINES)
+                            .sort(([, a], [, b]) => {
+                                const aPriority = a.type === 'mainline' ? 1 : 0;
+                                const bPriority = b.type === 'mainline' ? 1 : 0;
+                                return aPriority - bPriority;
+                            })
+                            .map(([trackId, coords]) => {
                             const lane = getLaneStatus(trackId);
                             const sectionId = trackId.substring(0, 3);
                             const isActiveBlock = selectedBlock?.id === trackId || selectedBlock?.id === sectionId;
@@ -127,7 +187,31 @@ export default function SectionMap() {
                             const strokeColor = lane.status === 'clear' ? (isMainline ? "#94a3b8" : "#e2e8f0") : lane.line;
 
                             return (
-                                <g key={trackId} onClick={() => setSelectedBlock({ type: 'Lane', id: trackId })} style={{ cursor: 'pointer', opacity: opacity, transition: 'opacity 0.3s' }}>
+                                <g
+                                    key={trackId}
+                                    onClick={() => setSelectedBlock({ type: 'Lane', id: trackId })}
+                                    onMouseEnter={(e) => {
+                                        showTrackTooltip(trackId, e.clientX, e.clientY);
+                                    }}
+                                    onMouseMove={(e) => {
+                                        setTrackTooltip((prev) => ({ ...prev, x: e.clientX, y: e.clientY }));
+                                    }}
+                                    onMouseLeave={() => {
+                                        setTrackTooltip({ visible: false, x: 0, y: 0, data: null });
+                                    }}
+                                    style={{ cursor: 'pointer', opacity: opacity, transition: 'opacity 0.3s' }}
+                                >
+                                    {/* Transparent hover lane to make mainline/loop hit-testing reliable */}
+                                    <path
+                                        d={coords.path}
+                                        fill="transparent"
+                                        stroke="rgba(15, 23, 42, 0.001)"
+                                        strokeWidth={isMainline ? '18' : '14'}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        pointerEvents="stroke"
+                                    />
+
                                     {/* Thick Base Line representing track status */}
                                     <path
                                         d={coords.path}
@@ -154,7 +238,7 @@ export default function SectionMap() {
                                     )}
                                     
                                     {/* Track Label */}
-                                    <text x={coords.midX} y={coords.midY - 12} textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="bold">
+                                    <text x={coords.midX} y={coords.midY - 12} textAnchor="middle" fill={isDarkMode ? "#f8fafc" : "#0f172a"} fontSize="10" fontWeight="bold">
                                         {isMainline ? "MAINLINE" : "LOOP"} ({trackId})
                                     </text>
                                     
@@ -204,7 +288,7 @@ export default function SectionMap() {
                                     <circle cx={station.cx} cy={station.cy} r="38" fill="transparent" />
 
                                     {/* Solid Card Background - slightly narrower to give tracks more room */}
-                                    <rect x={station.cx - 40} y={station.cy - 30} width="80" height="64" rx="8" fill="#ffffff" stroke="#cbd5e1" strokeWidth="1.5" filter="url(#soft-shadow)" />
+                                    <rect x={station.cx - 40} y={station.cy - 30} width="80" height="64" rx="8" fill={isDarkMode ? "#1e293b" : "#ffffff"} stroke={isDarkMode ? "#334155" : "#cbd5e1"} strokeWidth="1.5" filter="url(#soft-shadow)" />
 
                                     {/* The Exact Train Logo Replication */}
                                     <g transform={`translate(${station.cx}, ${station.cy - 14})`}>
@@ -222,7 +306,7 @@ export default function SectionMap() {
                                     </g>
 
                                     {/* Station Name */}
-                                    <text x={station.cx} y={station.cy + 14} textAnchor="middle" fill="#0f172a" fontSize="11" fontWeight="bold">
+                                    <text x={station.cx} y={station.cy + 14} textAnchor="middle" fill={isDarkMode ? "#f8fafc" : "#0f172a"} fontSize="11" fontWeight="bold">
                                         {station.name}
                                     </text>
 
@@ -266,10 +350,18 @@ export default function SectionMap() {
                                         pointerEvents="all"
                                         onMouseEnter={(e) => {
                                             setTooltip({ visible: true, x: e.clientX, y: e.clientY, data: train });
+                                            const hoverTrackId = train.schedule?.track_id || train.track_id;
+                                            if (hoverTrackId && TRACK_LINES[hoverTrackId]) {
+                                                showTrackTooltip(hoverTrackId, e.clientX, e.clientY);
+                                            }
                                         }}
-                                        onMouseMove={(e) => setTooltip(prev => ({ ...prev, x: e.clientX, y: e.clientY }))}
+                                        onMouseMove={(e) => {
+                                            setTooltip(prev => ({ ...prev, x: e.clientX, y: e.clientY }));
+                                            setTrackTooltip(prev => prev.visible ? { ...prev, x: e.clientX, y: e.clientY } : prev);
+                                        }}
                                         onMouseLeave={() => {
                                             setTooltip({ visible: false, x: 0, y: 0, data: null });
+                                            setTrackTooltip({ visible: false, x: 0, y: 0, data: null });
                                         }}
                                         onClick={(e) => { e.stopPropagation(); setSelectedTrainOverlay(train); setSelectedBlock({ type: 'Train', id: train.id }); }}
                                     >
@@ -289,8 +381,8 @@ export default function SectionMap() {
             </div>
 
             {/* 4. STATION / SECTION INFO CARDS GRID */}
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35', margin: 0 }}>Network Segment Telemetry</h2>
-            <p style={{ fontSize: 13, color: '#64748b', marginTop: 4, marginBottom: 24 }}>Detailed breakdown of live traffic and capacity per topographical segment.</p>
+            <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Network Segment Telemetry</h2>
+            <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 4, marginBottom: 24 }}>Detailed breakdown of live traffic and capacity per topographical segment.</p>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                 {SECTIONS.map(section => {
@@ -314,12 +406,10 @@ export default function SectionMap() {
                     return (
                         <div 
                             key={section.id} 
+                            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200"
                             onClick={() => setSelectedBlock({ type: 'Section', id: section.id })}
                             style={{
-                                background: '#fff',
-                                borderRadius: 16,
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)',
-                                border: isActive ? '2px solid #2563eb' : '1px solid rgba(0,0,0,0.05)',
+                                border: isActive ? '2px solid #2563eb' : undefined,
                                 padding: 24,
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -327,7 +417,7 @@ export default function SectionMap() {
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', margin: 0 }}>Section {section.id}</h3>
+                                <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Section {section.id}</h3>
                                 <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', padding: '4px 8px', borderRadius: 6, ...sColorStyle }}>
                                     {sectionStatus}
                                 </span>
@@ -335,21 +425,21 @@ export default function SectionMap() {
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                                 <div>
-                                    <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>ROUTE PATH</span>
-                                    <span style={{ fontSize: 14, fontWeight: 500, color: '#0f1f35' }}>
+                                    <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>ROUTE PATH</span>
+                                    <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 500 }}>
                                         {section.start} <span style={{ color: '#cbd5e1', margin: '0 4px' }}>→</span> {section.end}
                                     </span>
                                 </div>
                                 
                                 <div style={{ display: 'flex', gap: 16 }}>
                                     <div style={{ flex: 1 }}>
-                                        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>LIVE TRAIN(S)</span>
-                                        <span style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35' }}>
+                                        <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>LIVE TRAIN(S)</span>
+                                        <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>
                                             {activeTrainsStr}
                                         </span>
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 4 }}>MAX DEVIATION</span>
+                                        <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>MAX DEVIATION</span>
                                         <span style={{ fontSize: 15, fontWeight: 700, color: maxDelay > 0 ? '#ef4444' : '#10b981' }}>
                                             {maxDelay > 0 ? `+${maxDelay} mins` : (trainsInSection.length > 0 ? "On time" : "--")}
                                         </span>
@@ -364,7 +454,7 @@ export default function SectionMap() {
             {/* FLOATING EXACT-POSITION TOOLTIP (On Hover) */}
             {tooltip.visible && tooltip.data && !selectedTrainOverlay && (
                 <div 
-                    style={{ position: 'fixed', zIndex: 50, top: tooltip.y - 15, left: tooltip.x, transform: 'translate(-50%, -100%)', backgroundColor: '#0f172a', border: '1px solid #334155', color: 'white', padding: 20, borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', pointerEvents: 'none', minWidth: 220 }}
+                    style={{ position: 'fixed', zIndex: 50, top: tooltip.y - 15, left: showDualTooltip ? tooltip.x - 12 : tooltip.x, transform: showDualTooltip ? 'translate(-100%, -100%)' : 'translate(-50%, -100%)', backgroundColor: '#0f172a', border: '1px solid #334155', color: 'white', padding: 20, borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', pointerEvents: 'none', minWidth: 220 }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: 12, marginBottom: 12 }}>
                         <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.02em' }}>{tooltip.data.id}</span>
@@ -381,6 +471,39 @@ export default function SectionMap() {
                         <span style={{ fontWeight: 700, textAlign: 'right', color: tooltip.data.delay > 0 ? '#f87171' : '#34d399' }}>
                             {tooltip.data.delay > 0 ? `+${tooltip.data.delay} min` : "On Time"}
                         </span>
+                        <span style={{ color: '#94a3b8', fontWeight: 500 }}>Dest. ETA:</span>
+                        <span style={{ fontWeight: 700, textAlign: 'right', color: '#60a5fa' }}>
+                            {formatIsoToAmPm(tooltip.data.expected_destination_arrival)}
+                        </span>
+                        <span style={{ color: '#94a3b8', fontWeight: 500 }}>Total Calc Delay:</span>
+                        <span style={{ fontWeight: 700, textAlign: 'right', color: tooltip.data.delay > 0 ? '#f87171' : '#34d399' }}>
+                            {`${tooltip.data.delay ?? 0} min`}
+                        </span>
+                    </div>
+                </div>
+            )}
+
+            {/* TRACK HOVER TOOLTIP WITH MINI-TIMELINE */}
+            {trackTooltip.visible && trackTooltip.data && (
+                <div
+                    style={{ position: 'fixed', zIndex: 50, top: trackTooltip.y - 15, left: showDualTooltip ? trackTooltip.x + 12 : trackTooltip.x, transform: showDualTooltip ? 'translate(0, -100%)' : 'translate(-50%, -100%)', backgroundColor: '#0f172a', border: '1px solid #334155', color: 'white', padding: 16, borderRadius: 12, boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', pointerEvents: 'none', minWidth: 240 }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', paddingBottom: 10, marginBottom: 10 }}>
+                        <span style={{ fontSize: 14, fontWeight: 800 }}>{trackTooltip.data.trackId}</span>
+                        <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700 }}>Section {trackTooltip.data.sectionId}</span>
+                    </div>
+                    <div style={{ fontSize: 12 }}>
+                        <span style={{ fontWeight: 700, color: '#94a3b8' }}>Upcoming Arrivals:</span>
+                        {trackTooltip.data.upcomingTrains.length === 0 ? (
+                            <div style={{ marginTop: 6, color: '#cbd5e1' }}>No scheduled crossings</div>
+                        ) : (
+                            trackTooltip.data.upcomingTrains.map((t) => (
+                                <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                                    <span style={{ color: '#e2e8f0', fontWeight: 700 }}>{t.id}</span>
+                                    <span style={{ color: '#60a5fa', fontWeight: 700 }}>{t.arrival_time}</span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -440,34 +563,34 @@ export default function SectionMap() {
             {/* TRAIN MODAL OVERLAY (On Click) */}
             {selectedTrainOverlay && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }} onClick={() => setSelectedTrainOverlay(null)}>
-                    <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: 400, maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
+                    <div className="surface-modal" style={{ borderRadius: 20, padding: 32, width: 400, maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <h3 style={{ fontSize: 24, fontWeight: 800, color: '#0f1f35', margin: 0 }}>{selectedTrainOverlay.id}</h3>
+                            <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{selectedTrainOverlay.id}</h3>
                             <button onClick={() => setSelectedTrainOverlay(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 20, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontWeight: 'bold' }}>✕</button>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Train Type</span>
-                                <span style={{ color: '#0f1f35', fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.type}</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Train Type</span>
+                                <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.type}</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Priority Class</span>
-                                <span style={{ color: '#0f1f35', fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.priority}</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding:16  }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Priority Class</span>
+                                <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.priority}</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Live Location (Lane)</span>
-                                <span style={{ color: '#0f1f35', fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.track_id}</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding:16 }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Live Location (Lane)</span>
+                                <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>{selectedTrainOverlay.track_id}</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Operational Status</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding:16 }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Operational Status</span>
                                 <span style={{ color: selectedTrainOverlay.delay > 0 ? '#ef4444' : '#10b981', fontSize: 14, fontWeight: 800 }}>
                                     {selectedTrainOverlay.delay > 0 ? "DELAYED" : "ON TIME"}
                                 </span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: 16, borderRadius: 12, backgroundColor: selectedTrainOverlay.delay > 0 ? '#fef2f2' : '#f0fdf4', border: selectedTrainOverlay.delay > 0 ? '1px solid #fecaca' : '1px solid #bbf7d0' }}>
-                                <span style={{ color: selectedTrainOverlay.delay > 0 ? '#b91c1c' : '#15803d', fontSize: 14, fontWeight: 700 }}>Schedule Deviation</span>
-                                <span style={{ color: selectedTrainOverlay.delay > 0 ? '#ef4444' : '#10b981', fontSize: 20, fontWeight: 900 }}>
+                            <div className={selectedTrainOverlay.delay > 0 ? 'status-footer status-footer-danger' : 'status-footer status-footer-success'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, padding: 16 }}>
+                                <span className={selectedTrainOverlay.delay > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} style={{ fontSize: 14, fontWeight: 700 }}>Schedule Deviation</span>
+                                <span className={selectedTrainOverlay.delay > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} style={{ fontSize: 20, fontWeight: 900 }}>
                                     {selectedTrainOverlay.delay > 0 ? `+${selectedTrainOverlay.delay} mins` : 'On Time'}
                                 </span>
                             </div>
@@ -479,44 +602,44 @@ export default function SectionMap() {
             {/* STATION MODAL OVERLAY (On Click) */}
             {selectedStation && (
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)' }} onClick={() => setSelectedStation(null)}>
-                    <div style={{ background: '#fff', borderRadius: 20, padding: 32, width: 400, maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
+                    <div className="surface-modal" style={{ borderRadius: 20, padding: 32, width: 400, maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <h3 style={{ fontSize: 24, fontWeight: 800, color: '#0f1f35', margin: 0 }}>{selectedStation.name}</h3>
+                            <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>{selectedStation.name}</h3>
                             <button onClick={() => setSelectedStation(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: 20, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontWeight: 'bold' }}>✕</button>
                         </div>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Station Identifier</span>
-                                <span style={{ color: '#0f1f35', fontSize: 14, fontWeight: 700 }}>{selectedStation.id}</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Station Identifier</span>
+                                <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>{selectedStation.id}</span>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>Max Platform Capacity</span>
-                                <span style={{ color: '#0f1f35', fontSize: 14, fontWeight: 700 }}>{selectedStation.capacity} Bays</span>
+                            <div className="modal-info-row bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700/50 p-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16 }}>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Max Platform Capacity</span>
+                                <span className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700 }}>{selectedStation.capacity} Bays</span>
                             </div>
                             
                             <div style={{ marginTop: 8 }}>
-                                <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 12 }}>Currently Occupying Trains</span>
+                                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 12 }}>Currently Occupying Trains</span>
                                 {selectedStation.occupyingTrains.length > 0 ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {selectedStation.occupyingTrains.map(t => (
-                                            <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                                                <span style={{ fontWeight: 700, color: '#0f1f35' }}>{t.id}</span>
-                                                <span style={{ fontSize: 12, fontWeight: 800, color: t.delay > 0 ? '#ef4444' : '#10b981' }}>
+                                            <div key={t.id} className={t.delay > 0 ? 'status-chip status-chip-danger' : 'status-chip status-chip-success'} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span className={t.delay > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} style={{ fontWeight: 700 }}>{t.id}</span>
+                                                <span className={t.delay > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'} style={{ fontSize: 12, fontWeight: 800 }}>
                                                     {t.delay > 0 ? `Delayed (+${t.delay}m)` : 'On Time'}
                                                 </span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div style={{ padding: '16px', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', color: '#64748b', fontSize: 14, fontWeight: 500 }}>
+                                    <div className="bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-100 dark:border-slate-600 p-3 text-slate-500 dark:text-white" style={{ textAlign: 'center', fontSize: 14, fontWeight: 500 }}>
                                         No trains currently occupying platforms.
                                     </div>
                                 )}
                             </div>
                             
                             {selectedStation.occupiedCount >= selectedStation.capacity && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: 16, borderRadius: 12, backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
+                                <div className="status-footer status-footer-danger" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, padding: 16 }}>
                                     <span style={{ color: '#b91c1c', fontSize: 14, fontWeight: 700 }}>Station Status</span>
                                     <span style={{ color: '#ef4444', fontSize: 16, fontWeight: 900 }}>AT CAPACITY</span>
                                 </div>

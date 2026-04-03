@@ -30,13 +30,16 @@ function RoleRoute({ allowedRoles, children }) {
 function App() {
   const handleLogout = () => {
     sessionStorage.removeItem('trax_token')
+    sessionStorage.removeItem('trax_user')
     localStorage.removeItem('trax_role')   // clear role alongside token
+    localStorage.removeItem('trax_user')
+    window.dispatchEvent(new Event('trax-auth-update'))
     window.location.href = '/login'
   }
 
   return (
     <BrowserRouter>
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
       <Routes>
         <Route path="/login" element={
           isLoggedIn() ? <Navigate to="/dashboard" /> : <Login />

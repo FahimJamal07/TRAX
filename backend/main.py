@@ -1,6 +1,8 @@
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
+from typing import Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -31,6 +33,26 @@ except ImportError:
     )
 
 app = FastAPI(title="TRAX Core Optimization Engine")
+
+
+def _parse_iso_datetime(value: object) -> datetime | None:
+    """Parse ISO datetime values safely from DB text fields."""
+    if value is None:
+        return None
+    text_value = str(value).strip()
+    if not text_value or text_value.lower() == "none":
+        return None
+    try:
+        return datetime.fromisoformat(text_value)
+    except ValueError:
+        return None
+
+
+def _format_ampm(dt: datetime | None) -> str | None:
+    """Return a frontend-friendly 12-hour time string."""
+    if not dt:
+        return None
+    return dt.strftime("%I:%M %p")
 
 # 1. CORS POLICY: This allows your local React app (usually port 3000 or 5173) to talk to this Python server.
 app.add_middleware(
@@ -162,17 +184,32 @@ def run_optimization(
     # We join Train + Schedule so the optimizer gets both the priority weight
     # (needed for the objective function) and the current delay (the base time).
     db_trains = db.query(Train).all()
+    time_zero_dt = datetime.now().replace(second=0, microsecond=0)
 
     trains_data: list[dict] = []
-    for t in db_trains:
+    for train_obj in db_trains:
+        t: Any = train_obj
         # Use the first schedule entry; fall back to zeroes if missing.
-        schedule: Schedule | None = t.schedules[0] if t.schedules else None
+        schedule: Any = t.schedules[0] if t.schedules else None
+        scheduled_departure_in_minutes = 0
+        if t.scheduled_departure is not None and str(t.scheduled_departure).strip() != "":
+            try:
+                departure_dt = datetime.fromisoformat(str(t.scheduled_departure))
+                scheduled_departure_in_minutes = max(
+                    0,
+                    int((departure_dt - time_zero_dt).total_seconds() // 60),
+                )
+            except ValueError:
+                scheduled_departure_in_minutes = 0
         trains_data.append({
             "id":          t.id,
-            "type":        str(t.type or "").strip(),
+            "type":        str(t.type).strip() if t.type is not None else "",
             "priority":    t.priority,                             # int weight for solver
             "source":      t.source,
             "destination": t.destination,
+            "scheduled_departure": t.scheduled_departure,
+            "scheduled_departure_in_minutes": scheduled_departure_in_minutes,
+            "speed_multiplier":    t.speed_multiplier,
             "delay":       schedule.delay_minutes if schedule else 0,   # existing DB delay
         })
 
@@ -208,6 +245,7 @@ def run_optimization(
         injected_delays=injected_delays,
         track_blockages=scenario.track_blockages,
         capacity_changes=scenario.capacity_changes,
+        time_zero_iso=time_zero_dt.isoformat(timespec="seconds"),
     )
 
     # Propagate solver failures cleanly to the frontend error banner.
@@ -217,10 +255,14 @@ def run_optimization(
             "message": new_schedule.get("message", "Solver returned no solution."),
         }
 
+    solved_map = new_schedule.get("solution", {})
+    live_schedule = new_schedule.get("live_schedule", {})
+    kpi_summary = new_schedule.get("kpi_summary", {})
+
     # ── Step 4: Persist results → schedules table ────────────────────────────
     # For every train the solver touched, update its delay_minutes in SQLite
     # so subsequent GET /api/v1/trains calls reflect the post-optimisation state.
-    for train_id, result in new_schedule.items():
+    for train_id, result in solved_map.items():
         schedule_row = (
             db.query(Schedule)
             .filter(Schedule.train_id == train_id)
@@ -232,26 +274,10 @@ def run_optimization(
 
     db.commit()   # Single commit for the entire optimisation run (atomic).
 
-    # ── Step 5: Return — identical shape to the old hardcoded response ───────
-    # Simulation.jsx parses: data.schedule.Express_Train.new_start_time
-    #                         data.schedule.Freight_Train.total_delay_mins
-    # We build those exact keys from the solver output, keeping the contract.
-    express_result = new_schedule.get(priority_train_id, {"new_start_time": 0, "total_delay_mins": 0})
-    freight_result = new_schedule.get(secondary_train_id, {"new_start_time": 0, "total_delay_mins": 0})
-
+    # ── Step 5: Return strict KPI payload consumed by frontend analytics ─────
     return {
-        "status": "success",
-        "message": f"Network re-optimised. {len(new_schedule)} trains scheduled.",
-        "schedule": {
-            "Express_Train": {
-                "new_start_time":   express_result["new_start_time"],
-                "total_delay_mins": express_result["total_delay_mins"],
-            },
-            "Freight_Train": {
-                "new_start_time":   freight_result["new_start_time"],
-                "total_delay_mins": freight_result["total_delay_mins"],
-            },
-        },
+        "live_schedule": live_schedule,
+        "kpi_summary": kpi_summary,
     }
 
 
@@ -285,10 +311,31 @@ async def get_trains(
     trains = db.query(Train).all()
 
     result = []
-    for t in trains:
+    for train_obj in trains:
+        t: Any = train_obj
         # Pick the first (and typically only) schedule entry for this train.
         # If somehow a train has no schedule row yet, we fall back to safe defaults.
-        schedule: Schedule | None = t.schedules[0] if t.schedules else None
+        schedule: Any = t.schedules[0] if t.schedules else None
+
+        scheduled_departure_dt = _parse_iso_datetime(t.scheduled_departure)
+        schedule_arrival_dt = _parse_iso_datetime(schedule.arrival_time) if schedule else None
+        schedule_departure_dt = _parse_iso_datetime(schedule.departure_time) if schedule else None
+
+        delay_mins = int(schedule.delay_minutes) if schedule else 0
+        expected_destination_arrival_dt = (
+            schedule_arrival_dt + timedelta(minutes=delay_mins)
+            if schedule_arrival_dt else None
+        )
+
+        schedule_payload = []
+        if schedule:
+            schedule_payload.append({
+                "current_station": schedule.current_station,
+                "arrival_time": _format_ampm(schedule_arrival_dt),
+                "departure_time": _format_ampm(schedule_departure_dt),
+                "track_id": schedule.track_id,
+                "delay_minutes": delay_mins,
+            })
 
         result.append({
             "id":              t.id,
@@ -296,10 +343,13 @@ async def get_trains(
             "priority":        t.priority,           # Integer weight (10 / 5 / 1)
             "source":          t.source,
             "destination":     t.destination,
+            "scheduled_departure": scheduled_departure_dt.isoformat(timespec="seconds") if scheduled_departure_dt else None,
+            "expected_destination_arrival": expected_destination_arrival_dt.isoformat(timespec="seconds") if expected_destination_arrival_dt else None,
             "current_station": schedule.current_station   if schedule else "Unknown",
-            "delay":           schedule.delay_minutes     if schedule else 0,
+            "delay":           delay_mins,
             "status":          t.status,
             "track_id":        schedule.track_id          if schedule else None,
+            "schedule":        schedule_payload,
         })
 
     return result
@@ -321,14 +371,22 @@ def add_new_train(
     4. Force a fresh run of the optimiser to integrate the injected train.
     """
     # ── Map text values to engine primitives ─────────────────────────────────
+    time_zero_dt = datetime.now().replace(second=0, microsecond=0)
     try:
         hrs, mins = map(int, new_train.time.split(":"))
-        scheduled_arrival = hrs * 60 + mins
+        scheduled_departure_dt = datetime.now().replace(hour=hrs, minute=mins, second=0, microsecond=0)
     except ValueError:
-        scheduled_arrival = 720  # Fallback to 12:00 if format fails
+        scheduled_departure_dt = datetime.now().replace(hour=12, minute=0, second=0, microsecond=0)
 
     priority_map = {"High": 10, "Medium": 5, "Low": 1}
     priority_level = priority_map.get(new_train.priority, 1)
+    speed_map = {"Express": 1.0, "Passenger": 1.5, "Freight": 2.0}
+    duration_map = {"Express": 22, "Passenger": 30, "Freight": 42, "Mail": 26}
+    speed_multiplier = speed_map.get(new_train.type, 1.5)
+    travel_duration_mins = duration_map.get(new_train.type, 30)
+    arrival_dt = scheduled_departure_dt + timedelta(minutes=travel_duration_mins)
+    scheduled_arrival = arrival_dt.hour * 60 + arrival_dt.minute
+    scheduled_departure_in_minutes = max(0, int((scheduled_departure_dt - time_zero_dt).total_seconds() // 60))
 
     existing = db.query(Train).filter(Train.id == new_train.id).first()
     if existing:
@@ -345,6 +403,8 @@ def add_new_train(
         source=new_train.source,
         destination=new_train.destination,
         status="On Time",
+        scheduled_departure=scheduled_departure_dt.isoformat(timespec="seconds"),
+        speed_multiplier=speed_multiplier,
     )
     db.add(train_record)
     
@@ -353,6 +413,8 @@ def add_new_train(
         train_id=new_train.id,
         current_station=new_train.source,
         scheduled_arrival=scheduled_arrival,
+        arrival_time=arrival_dt.isoformat(timespec="seconds"),
+        departure_time=scheduled_departure_dt.isoformat(timespec="seconds"),
         delay_minutes=0,
         is_conflict=False,
         track_id=None,
@@ -366,14 +428,22 @@ def add_new_train(
     # Re-fetch all trains including the new one
     db_trains = db.query(Train).all()
     trains_data: list[dict] = []
-    for t in db_trains:
-        schedule: Schedule | None = t.schedules[0] if t.schedules else None
+    for train_obj in db_trains:
+        t: Any = train_obj
+        schedule: Any = t.schedules[0] if t.schedules else None
         trains_data.append({
             "id":          t.id,
-            "type":        str(t.type or "").strip(),
+            "type":        str(t.type).strip() if t.type is not None else "",
             "priority":    t.priority,
             "source":      t.source,
             "destination": t.destination,
+            "scheduled_departure": t.scheduled_departure,
+            "scheduled_departure_in_minutes": (
+                max(0, int((datetime.fromisoformat(str(t.scheduled_departure)) - time_zero_dt).total_seconds() // 60))
+                if (t.scheduled_departure is not None and str(t.scheduled_departure).strip() != "")
+                else 0
+            ),
+            "speed_multiplier":    t.speed_multiplier,
             "delay":       schedule.delay_minutes if schedule else 0,
         })
     
@@ -394,6 +464,7 @@ def add_new_train(
         injected_delays={},  # No extra delays, just base optimization for the new network size
         track_blockages=[],
         capacity_changes=[],
+        time_zero_iso=time_zero_dt.isoformat(timespec="seconds"),
     )
 
     if "status" in new_schedule and new_schedule["status"] == "failed":
@@ -403,8 +474,10 @@ def add_new_train(
             "message": new_schedule.get("message", "Network capacity exceeded. Could not route new train."),
         }
 
+    solved_map = new_schedule.get("solution", {})
+
     # Persist the re-optimized network delays back to SQLite
-    for train_id, result_data in new_schedule.items():
+    for train_id, result_data in solved_map.items():
         sched_row = db.query(Schedule).filter(Schedule.train_id == train_id).first()
         if sched_row:
             sched_row.delay_minutes = result_data["total_delay_mins"]
@@ -416,7 +489,8 @@ def add_new_train(
     return {
         "status": "success",
         "message": f"Train {new_train.id} successfully integrated. Network Re-Optimized.",
-        "schedule": new_schedule,  # Pass full schedule for completeness
+        "live_schedule": new_schedule.get("live_schedule", {}),
+        "kpi_summary": new_schedule.get("kpi_summary", {}),
     }
 
 

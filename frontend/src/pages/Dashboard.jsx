@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
-import { Search, Eye } from 'lucide-react'
+import { Search, Eye, Activity, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import KPICard from '../components/KPICard'
 import AlertPanel from '../components/AlertPanel'
 import TrainDetailModal from '../components/TrainDetailModal'
+import TagBadge from '../components/TagBadge'
 import { apiFetch } from '../utils/api'
+import { getChartTooltipProps } from '../utils/chartTooltip'
 
 // Station definitions used for delay/capacity analytics
 const STATIONS = [
@@ -16,37 +18,19 @@ const STATIONS = [
     { id: "E", name: "Station E", cx: 1100, cy: 200, capacity: 3 }
 ]
 
-const typeCfg = {
-  Express: { bg: '#fef2f2', color: '#ef4444' },
-  Passenger: { bg: '#eff6ff', color: '#2563eb' },
-  Freight: { bg: '#fffbeb', color: '#f59e0b' },
-  Mail: { bg: '#f0fdf4', color: '#16a34a' },
-}
-const priCfg = {
-  High: { bg: '#fef2f2', color: '#ef4444' },
-  Medium: { bg: '#fffbeb', color: '#f59e0b' },
-  Low: { bg: '#f0fdf4', color: '#16a34a' },
-}
-const statusCfg = {
-  Delayed: { bg: '#fef2f2', color: '#ef4444' },
-  'On Time': { bg: '#f0fdf4', color: '#16a34a' },
-  Waiting: { bg: '#fffbeb', color: '#f59e0b' },
-  Moving: { bg: '#eff6ff', color: '#2563eb' },
-  Scheduled: { bg: '#f8fafc', color: '#64748b' },
-}
-
-function Badge({ label, cfg }) {
-  const c = cfg[label] || { bg: '#f8fafc', color: '#64748b' }
-  return (
-    <span style={{ background: c.bg, color: c.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{label}</span>
-  )
-}
-
 // Map integer priority weights from the API back to display labels
 const PRIORITY_LABEL = { 10: 'High', 5: 'Medium', 1: 'Low' }
 
+const formatIsoToAmPm = (value) => {
+  if (!value) return '--'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return '--'
+  return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
+
 export default function Dashboard() {
-  const { isLoading: ganttLoading } = useOutletContext() || {};
+  const { isLoading: ganttLoading, isDarkMode = false } = useOutletContext() || {}
+  const chartTooltipProps = getChartTooltipProps(isDarkMode)
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('All Types')
   const [selectedTrain, setSelectedTrain] = useState(null)
@@ -159,25 +143,41 @@ export default function Dashboard() {
   const ganttHours = ['10:00', '10:30', '11:00', '11:30', '12:00']
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="dashboard-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* KPI Cards — all values derived live from the API fetch */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-        <KPICard title="Total Trains" value={isLoading ? '…' : trains.length} icon="🚆" iconBg="#eff6ff" />
+        <KPICard
+          title="Total Trains"
+          value={isLoading ? '…' : trains.length}
+          icon={<Activity color="#2563eb" />}
+          iconBg="#eff6ff"
+          className="kpi-blue"
+        />
         <KPICard
           title="Total Delay"
           value={isLoading ? '…' : trains.reduce((sum, t) => sum + (t.delay ?? 0), 0)}
-          unit="min" icon="🔴" iconBg="#fef2f2" valueColor="#ef4444"
+          unit="min"
+          icon={<Clock color="#ef4444" />}
+          iconBg="#fef2f2"
+          valueColor="#ef4444"
+          className="kpi-red"
         />
         <KPICard
           title="Delayed Trains"
           value={isLoading ? '…' : trains.filter(t => t.delay > 0).length}
-          icon="📊" iconBg="#f0fdf4" valueColor="#16a34a"
+          icon={<AlertTriangle color="#f59e0b" />}
+          iconBg="#fffbeb"
+          valueColor="#f59e0b"
+          className="kpi-amber"
         />
         <KPICard
           title="On Time"
           value={isLoading ? '…' : trains.filter(t => t.delay === 0).length}
-          icon="📈" iconBg="#fffbeb" valueColor="#f59e0b"
+          icon={<CheckCircle2 color="#16a34a" />}
+          iconBg="#ecfdf5"
+          valueColor="#16a34a"
+          className="kpi-emerald"
         />
       </div>
 
@@ -185,24 +185,24 @@ export default function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16 }}>
 
         {/* Train Schedule Table */}
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f1f35' }}>Train Schedule</h3>
+            <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 15, fontWeight: 700 }}>Train Schedule</h3>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <div style={{ position: 'relative' }}>
                 <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Train" style={{ border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '8px 12px 8px 30px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', width: 160 }} />
               </div>
-              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', background: '#fff', color: '#374151' }}>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="surface-select" style={{ border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', background: '#fff', color: '#374151' }}>
                 <option>All Types</option><option>Express</option><option>Passenger</option><option>Freight</option><option>Mail</option>
               </select>
             </div>
           </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="w-full border-collapse text-slate-700 dark:text-slate-300" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                {['Train ID', 'Type', 'Priority', 'From → To', 'Delay', 'Status', 'Action'].map(h => (
-                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f1f5f9' }}>{h}</th>
+              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700/50">
+                {['Train ID', 'Type', 'Priority', 'From → To', 'Sch. Departure', 'Est. Arrival', 'Delay', 'Status', 'Action'].map(h => (
+                  <th key={h} className="text-slate-500 dark:text-slate-300" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -210,37 +210,36 @@ export default function Dashboard() {
               {isLoading ? (
                 // Loading skeleton row while the fetch is in-flight
                 <tr>
-                  <td colSpan={7} style={{ padding: '32px 0', textAlign: 'center' }}>
+                  <td colSpan={9} style={{ padding: '32px 0', textAlign: 'center' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                       <div style={{
                         width: 18, height: 18, border: '2.5px solid #e5e7eb',
                         borderTopColor: '#2563eb', borderRadius: '50%',
                         animation: 'spin 0.75s linear infinite',
                       }} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Loading schedule…</span>
+                      <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>Loading schedule…</span>
                       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                     </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((t, i) => (
-                  <tr key={t.id}
-                    style={{ background: i % 2 === 0 ? '#ffffff' : '#fafbfc', borderBottom: '1px solid #f1f5f9' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f0f6ff'}
-                    onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#ffffff' : '#fafbfc'}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f1f35', fontSize: 13, fontFamily: 'DM Mono, monospace' }}>{t.id}</td>
-                    <td style={{ padding: '12px 16px' }}><Badge label={t.type} cfg={typeCfg} /></td>
-                    <td style={{ padding: '12px 16px' }}><Badge label={t.priority} cfg={priCfg} /></td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{t.source} → {t.destination}</td>
+                filtered.map((t) => (
+                  <tr key={t.id} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <td className="text-slate-900 dark:text-white" style={{ padding: '12px 16px', fontWeight: 700, fontSize: 13, fontFamily: 'DM Mono, monospace' }}>{t.id}</td>
+                    <td style={{ padding: '12px 16px' }}><TagBadge label={t.type} /></td>
+                    <td style={{ padding: '12px 16px' }}><TagBadge label={t.priority} /></td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13 }}>{t.source} → {t.destination}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600 }}>{formatIsoToAmPm(t.scheduled_departure)}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700 }}>{formatIsoToAmPm(t.expected_destination_arrival)}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: t.delay > 0 ? '#ef4444' : '#16a34a', fontSize: 13 }}>
                       {t.delay > 0 ? `+${t.delay} min` : '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <Badge label={t.delay > 0 ? 'Delayed' : 'On Time'} cfg={statusCfg} />
+                      <TagBadge label={t.delay > 0 ? 'Delayed' : 'On Time'} />
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <button onClick={() => setSelectedTrain(t)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 600, color: '#2563eb', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Eye size={12} /> View
+                      <button onClick={() => setSelectedTrain(t)} className="bg-blue-50 dark:bg-blue-900/20 border border-transparent dark:border-blue-800/30 text-blue-600 dark:text-blue-400" style={{ borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Eye size={12} /> 
                       </button>
                     </td>
                   </tr>
@@ -251,19 +250,19 @@ export default function Dashboard() {
         </div>
 
         {/* Infrastructure Saturation Panel */}
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ overflow: 'hidden' }}>
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f1f35' }}>Infrastructure Saturation</h3>
+            <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 15, fontWeight: 700 }}>Infrastructure Saturation</h3>
           </div>
           <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {trackSaturation.length === 0 ? (
-              <div style={{ fontSize: 13, color: '#64748b' }}>No active track occupancy data.</div>
+              <div className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13 }}>No active track occupancy data.</div>
             ) : (
               trackSaturation.map((track) => (
                 <div key={track.trackId} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{track.trackId}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>{track.count}/{TRACK_SAFE_CAPACITY}</span>
+                    <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11, fontWeight: 700 }}>{track.count}/{TRACK_SAFE_CAPACITY}</span>
                   </div>
                   <div style={{ height: 10, borderRadius: 9999, background: '#e2e8f0', overflow: 'hidden' }}>
                     <div
@@ -284,17 +283,17 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Row: Delay Chart + Train Movement */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 } }>
 
         {/* Delay Analytics Chart */}
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f1f35', marginBottom: 16 }}>Delay Analytics</h3>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{padding:24}}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Delay Analytics</h3>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={delaysByStation}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="station" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)', fontSize: 12 }} />
+              <Tooltip {...chartTooltipProps} />
               <Legend iconType="triangle" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
               <Line type="monotone" dataKey="delay" name="Current Delay (mins)" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 4, fill: '#ef4444' }} />
             </LineChart>
@@ -302,8 +301,8 @@ export default function Dashboard() {
         </div>
 
         {/* Train Movement Gantt */}
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0f1f35', marginBottom: 16, display: 'flex', alignItems: 'center' }}>
+        <div className="whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ padding: 24 }}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center' }}>
             Train Movement
             {ganttLoading && <span style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', marginLeft: 12 }}>⏳ Fetching...</span>}
           </h3>
@@ -312,7 +311,7 @@ export default function Dashboard() {
             <div></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
               {['Delhi', 'Agra', 'Kanpur', 'Lucknow'].map(s => (
-                <span key={s} style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>{s}</span>
+                <span key={s} className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11, fontWeight: 700 }}>{s}</span>
               ))}
             </div>
           </div>
@@ -320,9 +319,9 @@ export default function Dashboard() {
           {displayGanttData.map((g) => (
             <div key={g.id} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, marginTop: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b' }}>{g.label}</span>
+                <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 12, fontWeight: 700 }}>{g.label}</span>
               </div>
-              <div style={{ position: 'relative', height: 32, background: '#f8fafc', borderRadius: 8, overflow: 'hidden' }}>
+              <div className="whatif-card whatif-card-neutral w-full h-10 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60" style={{ position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', left: `${(g.start / 400) * 100}%`, width: `${(g.width / 400) * 100}%`, height: '100%', background: g.color, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', boxShadow: `0 2px 8px ${g.color}55` }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>{g.label}</span>
                   <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap' }}>{g.status}</span>
@@ -335,7 +334,7 @@ export default function Dashboard() {
             <div></div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               {ganttHours.map(h => (
-                <span key={h} style={{ fontSize: 10, color: '#94a3b8' }}>{h}</span>
+                <span key={h} className="text-slate-500 dark:text-slate-400" style={{ fontSize: 10 }}>{h}</span>
               ))}
             </div>
           </div>

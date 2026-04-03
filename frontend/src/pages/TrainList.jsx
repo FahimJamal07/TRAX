@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { Search } from 'lucide-react'
 import TrainDetailModal from '../components/TrainDetailModal'
+import TagBadge from '../components/TagBadge'
 import { apiFetch } from '../utils/api'
-
-const typeCfg = { Express: ['#fef2f2', '#ef4444'], Passenger: ['#eff6ff', '#2563eb'], Freight: ['#fffbeb', '#f59e0b'], Mail: ['#f0fdf4', '#16a34a'] }
-const priCfg = { High: ['#fef2f2', '#ef4444'], Medium: ['#fffbeb', '#f59e0b'], Low: ['#f0fdf4', '#16a34a'] }
-const statusCfg = { Delayed: ['#fef2f2', '#ef4444'], 'On Time': ['#f0fdf4', '#16a34a'], Waiting: ['#fffbeb', '#f59e0b'], Moving: ['#eff6ff', '#2563eb'], Scheduled: ['#f8fafc', '#64748b'] }
-
-function Chip({ label, map }) {
-  const [bg, color] = map[label] || ['#f8fafc', '#64748b']
-  return <span style={{ background: bg, color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{label}</span>
-}
 
 // Map integer priority weights (from the API) back to display labels for filter chips.
 const PRIORITY_LABEL = { 10: 'High', 5: 'Medium', 1: 'Low' }
+
+const formatIsoToAmPm = (value) => {
+  if (!value) return '--'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return '--'
+  return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
 
 export default function TrainList() {
   // ── API data state ─────────────────────────────────────────────────────────
@@ -85,7 +84,12 @@ export default function TrainList() {
     let newStatus = t.status;
 
     if (liveSchedule) {
-      if ((t.id === 'EXP101' || t.id === 'T-702') && liveSchedule.Express_Train) {
+      const dynamicScheduleRow = liveSchedule[t.id]
+      if (dynamicScheduleRow && typeof dynamicScheduleRow.total_delay_mins === 'number') {
+        newDelay = dynamicScheduleRow.total_delay_mins
+        newStatus = newDelay > 0 ? 'Delayed' : 'On Time'
+      } else if ((t.id === 'EXP101' || t.id === 'T-702') && liveSchedule.Express_Train) {
+        // Backward compatibility with legacy optimize payload.
         newDelay = liveSchedule.Express_Train.total_delay_mins;
         newStatus = newDelay > 0 ? 'Delayed' : 'On Time';
       } else if ((t.id === 'FRG311' || t.id === 'T-803') && liveSchedule.Freight_Train) {
@@ -108,13 +112,13 @@ export default function TrainList() {
     })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="trainlist-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35' }}>Train List</h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>All trains in the network — click a row for details</p>
+        <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 20, fontWeight: 700 }}>Train List</h2>
+        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 2 }}>All trains in the network — click a row for details</p>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ padding: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
           <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by Train ID or Station..." style={{ ...sel, paddingLeft: 30, width: '100%' }} />
@@ -125,9 +129,9 @@ export default function TrainList() {
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={sel}><option value="id">Sort: ID</option><option value="delay">Sort: Delay</option><option value="priority">Sort: Priority</option></select>
       </div>
 
-      <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>
+          <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, fontWeight: 600 }}>
             {isLoading ? 'Loading…' : `Showing ${filtered.length} trains`}
           </span>
           {fetchError && (
@@ -143,34 +147,33 @@ export default function TrainList() {
               borderTopColor: '#2563eb', borderRadius: '50%',
               animation: 'spin 0.75s linear infinite',
             }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b' }}>Loading network data…</span>
+            <span className="text-slate-500 dark:text-slate-400" style={{ fontSize: 14, fontWeight: 600 }}>Loading network data…</span>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="surface-table w-full border-collapse text-slate-700 dark:text-slate-300" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  {['Train ID', 'Type', 'Priority', 'Source', 'Destination', 'Current Station', 'Delay', 'Status'].map(h => (
-                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>{h}</th>
+                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700/50">
+                  {['Train ID', 'Type', 'Priority', 'Source', 'Destination', 'Sch. Departure', 'Est. Arrival', 'Current Station', 'Delay', 'Status'].map(h => (
+                    <th key={h} className="text-slate-500 dark:text-slate-300" style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t, i) => (
-                  <tr key={t.id} onClick={() => setSelected(t)}
-                    style={{ background: i % 2 === 0 ? '#ffffff' : '#fafbfc', borderBottom: '1px solid #f1f5f9', cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#f0f6ff'}
-                    onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? '#ffffff' : '#fafbfc'}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f1f35', fontFamily: 'DM Mono, monospace', fontSize: 13 }}>{t.id}</td>
-                    <td style={{ padding: '12px 16px' }}><Chip label={t.type} map={typeCfg} /></td>
-                    <td style={{ padding: '12px 16px' }}><Chip label={t.priority} map={priCfg} /></td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{t.source}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{t.destination}</td>
-                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{t.currentStation}</td>
+                {filtered.map((t) => (
+                  <tr key={t.id} onClick={() => setSelected(t)} className="cursor-pointer border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <td className="text-slate-900 dark:text-white" style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'DM Mono, monospace', fontSize: 13 }}>{t.id}</td>
+                    <td style={{ padding: '12px 16px' }}><TagBadge label={t.type} /></td>
+                    <td style={{ padding: '12px 16px' }}><TagBadge label={t.priority} /></td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13 }}>{t.source}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13 }}>{t.destination}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13, fontWeight: 600 }}>{formatIsoToAmPm(t.scheduled_departure)}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13, fontWeight: 700 }}>{formatIsoToAmPm(t.expected_destination_arrival)}</td>
+                    <td className="text-slate-700 dark:text-slate-300" style={{ padding: '12px 16px', fontSize: 13 }}>{t.currentStation}</td>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: t.delay > 0 ? '#ef4444' : '#16a34a', fontSize: 13 }}>{t.delay > 0 ? `+${t.delay} min` : 'On time'}</td>
                     <td style={{ padding: '12px 16px' }}>
-                      <Chip label={t.delay > 0 ? 'Delayed' : 'On Time'} map={statusCfg} />
+                      <TagBadge label={t.delay > 0 ? 'Delayed' : 'On Time'} />
                     </td>
                   </tr>
                 ))}

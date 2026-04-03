@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { apiFetch } from '../utils/api'
 
-const card = { background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 24 }
+const card = { padding: 24 }
 const label = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }
 const input = { width: '100%', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', color: '#0f1f35', background: '#fff' }
 const btnPrimary = { width: '100%', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', marginTop: 8 }
@@ -9,8 +9,8 @@ const btnDanger = { ...btnPrimary, background: 'linear-gradient(135deg, #ef4444,
 
 function SimCard({ title, children }) {
   return (
-    <div style={card}>
-      <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>{title}</h3>
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={card}>
+      <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>{title}</h3>
       {children}
     </div>
   )
@@ -42,6 +42,8 @@ export default function Simulation() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   }
+
+  const extractScheduleEntries = (scheduleMap) => Object.entries(scheduleMap || {}).slice(0, 2)
 
   useEffect(() => {
     let isMounted = true
@@ -115,11 +117,25 @@ export default function Simulation() {
       if (!res) return
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
       const data = await res.json()
-      if (data.status === 'success') {
+      if (data.live_schedule && data.kpi_summary) {
+        localStorage.setItem('trax_live_schedule', JSON.stringify(data.live_schedule));
+        localStorage.setItem('trax_kpi_summary', JSON.stringify(data.kpi_summary));
+        window.dispatchEvent(new Event('trax_schedule_update'));
+        window.dispatchEvent(new Event('trax_network_update'));
+        setOptimizationResult({
+          live_schedule: data.live_schedule,
+          kpi_summary: data.kpi_summary,
+        })
+        showToast('Network Re-Optimized Successfully!', 'success')
+      } else if (data.status === 'success' && data.schedule) {
+        // Backward compatibility with the legacy optimize payload.
         localStorage.setItem('trax_live_schedule', JSON.stringify(data.schedule));
         window.dispatchEvent(new Event('trax_schedule_update'));
         window.dispatchEvent(new Event('trax_network_update'));
-        setOptimizationResult(data.schedule)
+        setOptimizationResult({
+          live_schedule: data.schedule,
+          kpi_summary: null,
+        })
         showToast('Network Re-Optimized Successfully!', 'success')
       } else {
         throw new Error(data.message || 'Optimization failed')
@@ -205,19 +221,40 @@ export default function Simulation() {
       if (!res.ok) { const d = await res.json(); setBlockError(d.detail ?? `Server error (${res.status})`); return }
 
       const data = await res.json()
-      if (data.status === 'success') {
+      if (data.live_schedule && data.kpi_summary) {
         // Persist schedule + notify other components
+        localStorage.setItem('trax_live_schedule', JSON.stringify(data.live_schedule))
+        localStorage.setItem('trax_kpi_summary', JSON.stringify(data.kpi_summary))
+        window.dispatchEvent(new Event('trax_schedule_update'))
+        window.dispatchEvent(new Event('trax_network_update'))
+        setBlockResult(data.live_schedule)
+        showToast(`Blockage applied to Section ${blockForm.section}. Network reorganized.`, 'success')
+
+        const afterDelay = Number(data.kpi_summary?.total_delays_mins ?? 0)
+        const reductionPct = Number(data.kpi_summary?.delay_reduction_percentage ?? 0)
+        const inferredBefore = reductionPct > 0 && reductionPct < 100
+          ? Math.round(afterDelay / (1 - reductionPct / 100))
+          : afterDelay
+
+        // Also populate the What-If panel at the bottom
+        setResults({
+          before: inferredBefore,
+          after: afterDelay,
+          diff: afterDelay - inferredBefore,
+          note:   `Section ${blockForm.section} blocked for ${blockForm.duration || 0} min from t=${blockStart || 0}. Solver rescheduled all trains around the ghost interval.`,
+        })
+      } else if (data.status === 'success' && data.schedule) {
+        // Backward compatibility with the legacy optimize payload.
         localStorage.setItem('trax_live_schedule', JSON.stringify(data.schedule))
         window.dispatchEvent(new Event('trax_schedule_update'))
         window.dispatchEvent(new Event('trax_network_update'))
         setBlockResult(data.schedule)
         showToast(`Blockage applied to Section ${blockForm.section}. Network reorganized.`, 'success')
-        // Also populate the What-If panel at the bottom
         setResults({
           before: 125,
           after:  (data.schedule?.Express_Train?.total_delay_mins ?? 125) + (data.schedule?.Freight_Train?.total_delay_mins ?? 27),
-          diff:   null, // computed in render
-          note:   `Section ${blockForm.section} blocked for ${blockForm.duration || 0} min from t=${blockStart || 0}. Solver rescheduled all trains around the ghost interval.`,
+          diff: null,
+          note: `Section ${blockForm.section} blocked for ${blockForm.duration || 0} min from t=${blockStart || 0}. Solver rescheduled all trains around the ghost interval.`,
         })
       } else {
         setBlockError(data.message || 'Blockage optimization failed.')
@@ -230,10 +267,10 @@ export default function Simulation() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="simulation-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35' }}>Simulation Panel</h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Simulate disruptions and test optimization responses</p>
+        <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 20, fontWeight: 700 }}>Simulation Panel</h2>
+        <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 2 }}>Simulate disruptions and test optimization responses</p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -241,7 +278,7 @@ export default function Simulation() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <label style={label}>Select Priority Train</label>
+                <label className="text-slate-500 dark:text-slate-400" style={label}>Select Priority Train</label>
                 <select value={priorityTrainId} onChange={e => setPriorityTrainId(e.target.value)} style={input}>
                   {trains.length === 0 ? (
                     <option value="">No trains available</option>
@@ -283,22 +320,20 @@ export default function Simulation() {
               {isOptimizing ? "Optimizing..." : "Apply Delay & Re-Optimize"}
             </button>
             {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', padding: '10px', borderRadius: '8px', fontSize: '13px' }}>
+              <div className="sim-alert sim-alert-danger" style={{ padding: '10px', fontSize: '13px' }}>
                 <strong>Error: </strong> {error}
               </div>
             )}
             {optimizationResult && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #4ade80', padding: '12px', borderRadius: '8px' }}>
+              <div className="sim-alert sim-alert-success" style={{ padding: '12px' }}>
                 <h4 style={{ fontSize: '13px', color: '#16a34a', margin: '0 0 8px 0', fontWeight: 'bold' }}>Optimization Successful</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Express Train:</span>
-                    <strong>{optimizationResult.Express_Train.new_start_time} (delay: {optimizationResult.Express_Train.total_delay_mins}m)</strong>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Freight Train:</span>
-                    <strong>{optimizationResult.Freight_Train.new_start_time} (delay: {optimizationResult.Freight_Train.total_delay_mins}m)</strong>
-                  </div>
+                  {extractScheduleEntries(optimizationResult.live_schedule).map(([trainId, row]) => (
+                    <div key={trainId} style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{trainId}:</span>
+                      <strong>delay: {Number(row?.total_delay_mins ?? 0)}m</strong>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -401,24 +436,22 @@ export default function Simulation() {
 
             {/* Error feedback */}
             {blockError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', padding: '10px', borderRadius: '8px', fontSize: '13px' }}>
+              <div className="sim-alert sim-alert-danger" style={{ padding: '10px', fontSize: '13px' }}>
                 <strong>Error: </strong>{blockError}
               </div>
             )}
 
             {/* Success feedback */}
             {blockResult && (
-              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', padding: '12px', borderRadius: '8px' }}>
+              <div className="sim-alert sim-alert-warning" style={{ padding: '12px' }}>
                 <h4 style={{ fontSize: '13px', color: '#c2410c', margin: '0 0 8px 0', fontWeight: 'bold' }}>🚧 Blockage Applied — Network Rescheduled</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <div style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Express Train new slot:</span>
-                    <strong>{blockResult.Express_Train?.new_start_time ?? '—'} min (delay: {blockResult.Express_Train?.total_delay_mins ?? '—'} m)</strong>
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Freight Train new slot:</span>
-                    <strong>{blockResult.Freight_Train?.new_start_time ?? '—'} min (delay: {blockResult.Freight_Train?.total_delay_mins ?? '—'} m)</strong>
-                  </div>
+                  {extractScheduleEntries(blockResult).map(([trainId, row]) => (
+                    <div key={trainId} style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{trainId}:</span>
+                      <strong>delay: {Number(row?.total_delay_mins ?? 0)} m</strong>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -446,22 +479,22 @@ export default function Simulation() {
       </div>
 
       {results && (
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.05)', padding: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16 }}>What-If Comparison</h3>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200" style={{ padding: 24 }}>
+          <h3 className="text-slate-900 dark:text-white" style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>What-If Comparison</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
             {[
-              { label: 'Before (min)', value: results.before, bg: '#fef2f2', border: '#fecaca', color: '#ef4444' },
-              { label: 'After (min)', value: results.after, bg: '#eff6ff', border: '#bfdbfe', color: '#2563eb' },
-              { label: 'Difference', value: `${results.diff > 0 ? '+' : ''}${results.diff} min`, bg: '#fffbeb', border: '#fed7aa', color: '#f59e0b' },
-              { label: 'Changed Precedence', value: 'EXP101 → EXP412', bg: '#f8fafc', border: '#e2e8f0', color: '#374151' },
+              { label: 'Before (min)', value: results.before, className: 'sim-metric-danger', color: '#ef4444' },
+              { label: 'After (min)', value: results.after, className: 'sim-metric-info', color: '#2563eb' },
+              { label: 'Difference', value: `${results.diff > 0 ? '+' : ''}${results.diff} min`, className: 'sim-metric-warning', color: '#f59e0b' },
+              { label: 'Changed Precedence', value: 'EXP101 → EXP412', className: 'sim-metric-neutral', color: '#374151' },
             ].map(item => (
-              <div key={item.label} style={{ background: item.bg, border: `1px solid ${item.border}`, borderRadius: 12, padding: '16px', textAlign: 'center' }}>
-                <p style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</p>
+              <div key={item.label} className={`sim-metric-card ${item.className}`} style={{ padding: '16px', textAlign: 'center' }}>
+                <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{item.label}</p>
                 <p style={{ fontSize: 22, fontWeight: 800, color: item.color, marginTop: 6 }}>{item.value}</p>
               </div>
             ))}
           </div>
-          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 12, padding: '12px 16px' }}>
+          <div className="sim-note" style={{ borderRadius: 12, padding: '12px 16px' }}>
             <p style={{ fontSize: 12, color: '#2563eb' }}>{results.note}</p>
           </div>
         </div>
@@ -469,7 +502,7 @@ export default function Simulation() {
 
       {/* Enterprise Toast Overlay */}
       {toast && (
-        <div style={{
+        <div className="sim-toast" style={{
           position: 'fixed', bottom: 30, right: 30, zIndex: 9999,
           background: toast.type === 'error' ? '#fef2f2' : '#f0fdf4',
           border: `1px solid ${toast.type === 'error' ? '#fecaca' : '#bbf7d0'}`,
