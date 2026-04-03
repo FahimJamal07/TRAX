@@ -38,16 +38,10 @@ class Track(Base):
 
     Columns
     -------
-    id               : Unique identifier (e.g., 'A-B-1').
-    section_id       : The logical section this track belongs to (e.g., 'A-B').
-                       Indexed for fast lookup.
-    lane             : Integer representing parallel lane index (e.g., 1 or 2).
-    track_type       : Classification label (e.g., 'mainline', 'loop', 'siding').
-    source_node      : Directed-graph start vertex for this segment.
-    target_node      : Directed-graph end vertex for this segment.
-    length_meters    : Physical segment length used for traversal-time calculations.
-    speed_limit_kmh  : Segment speed cap used by the optimizer.
-    is_bidirectional : True when the segment can be traversed both directions.
+    id         : Unique identifier (e.g., 'A-B-1').
+    section_id : The logical section this track belongs to (e.g., 'A-B').
+                 Indexed for fast lookup.
+    lane       : Integer representing parallel lane index (e.g., 1 or 2).
     """
 
     __tablename__ = "tracks"
@@ -56,18 +50,9 @@ class Track(Base):
     section_id = Column(String, index=True, nullable=False)
     lane = Column(Integer, nullable=False)
     track_type = Column(String, nullable=False, default="mainline")
-    source_node = Column(String, index=True, nullable=False)
-    target_node = Column(String, index=True, nullable=False)
-    length_meters = Column(Float, nullable=False)
-    speed_limit_kmh = Column(Float, nullable=False)
-    is_bidirectional = Column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:
-        return (
-            f"<Track id={self.id!r} section={self.section_id!r} lane={self.lane} "
-            f"type={self.track_type!r} source={self.source_node!r} "
-            f"target={self.target_node!r} vmax={self.speed_limit_kmh}kmh>"
-        )
+        return f"<Track id={self.id!r} section={self.section_id!r} lane={self.lane} type={self.track_type!r}>"
 
 
 # ---------------------------------------------------------------------------

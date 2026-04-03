@@ -159,6 +159,7 @@ def optimize_network(
             "base_time": base_time,
             "end_var": end_var,
             "travel_duration": travel_duration,
+
             "scheduled_departure": departure_minute,
             "train_type": str(train.get("type", "Unknown")),
         }
