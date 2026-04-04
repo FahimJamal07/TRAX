@@ -9,7 +9,10 @@
 ## Overview
 TRAX is an enterprise-grade Railway Traffic Control dashboard designed to simulate, monitor, and optimize train schedules across a multi-node transit network. Powered by Google's OR-Tools (CP-SAT solver) on the backend and a high-performance React SVG engine on the frontend, TRAX mathematically resolves scheduling conflicts, enforces physical routing constraints, and provides real-time telemetry to Section Controllers.
 
-![TRAX Dashboard Screenshot](placeholder_for_screenshot.png)
+|  |  |
+| :---: | :---: |
+| ![Dashboard](frontend\src\assets\dashboard1.png) | ![Dashboard](frontend\src\assets\dashboard2.png) |
+
 
 ## Core Features
 * **Constraint Programming Engine:** Utilizes a CP-SAT solver to automatically generate conflict-free schedules. Supports three dynamic optimization objectives: *Minimize Delay*, *Maximize Throughput*, and *Balanced Mode*.
@@ -115,6 +118,7 @@ Password: trax2026
 ---
 ## Project Structure
 
+```
 TRAX/
 ├── backend/
 │   ├── __init__.py
@@ -136,3 +140,4 @@ TRAX/
 ├── .env                 # Secret keys and environment variables
 ├── .gitignore
 └── README.md
+```
