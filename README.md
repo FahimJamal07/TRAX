@@ -9,9 +9,9 @@
 ## Overview
 TRAX is an enterprise-grade Railway Traffic Control dashboard designed to simulate, monitor, and optimize train schedules across a multi-node transit network. Powered by Google's OR-Tools (CP-SAT solver) on the backend and a high-performance React SVG engine on the frontend, TRAX mathematically resolves scheduling conflicts, enforces physical routing constraints, and provides real-time telemetry to Section Controllers.
 
-| Dashboard |   Dashboard   |
+| Dashboard |   Reports   |
 | :---: | :---: |
-| ![Dashboard](dashboard1.png) | ![Dashboard](dashboard2.png) |
+| ![Dashboard](dashboard1.png) | ![Dashboard](image.png) |
 
 
 ## Core Features
