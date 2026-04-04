@@ -69,7 +69,11 @@ class ScenarioRequest(BaseModel):
     freight_injected_delay: int
     priority_train_id: str | None = None
     secondary_train_id: str | None = None
+    optimization_mode: str = "minimize_delay"
+    headway_time: int = 5
+    solver_timeout: int = 30
     express_weight: int = 10  # Default fallback
+    passenger_weight: int = 5
     freight_weight: int = 1   # Default fallback
     # Physical track blockages injected by the Simulation UI.
     track_blockages: list[dict] = []
@@ -243,6 +247,12 @@ def run_optimization(
         trains_data=trains_data,
         tracks_data=tracks_data,
         injected_delays=injected_delays,
+        optimization_mode=scenario.optimization_mode,
+        headway_time=scenario.headway_time,
+        solver_timeout=scenario.solver_timeout,
+        express_weight=scenario.express_weight,
+        passenger_weight=scenario.passenger_weight,
+        freight_weight=scenario.freight_weight,
         track_blockages=scenario.track_blockages,
         capacity_changes=scenario.capacity_changes,
         time_zero_iso=time_zero_dt.isoformat(timespec="seconds"),
@@ -462,6 +472,12 @@ def add_new_train(
         trains_data=trains_data,
         tracks_data=tracks_data,
         injected_delays={},  # No extra delays, just base optimization for the new network size
+        optimization_mode="minimize_delay",
+        headway_time=5,
+        solver_timeout=30,
+        express_weight=10,
+        passenger_weight=5,
+        freight_weight=1,
         track_blockages=[],
         capacity_changes=[],
         time_zero_iso=time_zero_dt.isoformat(timespec="seconds"),

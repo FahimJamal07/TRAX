@@ -43,6 +43,13 @@ html:not(.dark) .sectionmap-page [class*='bg-white'][class*='rounded'] {
   border-color: #e5e7eb !important;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06) !important;
 }
+html:not(.dark) .settings-page {
+  background: transparent;
+}
+
+html.dark .settings-page {
+  background: transparent;
+}
 
 html:not(.dark) .dashboard-page input,
 html:not(.dark) .dashboard-page select,
@@ -609,6 +616,31 @@ html.dark .dashboard-page span,
 html.dark .trainlist-page span,
 html.dark .sectionmap-page span {
   color: #94a3b8;
+}
+
+.settings-page .mode-grid {
+  column-gap: 1.25rem;
+  row-gap: 1.25rem;
+}
+
+.settings-page .mode-option {
+  padding: 1.25rem;
+}
+
+.settings-page .mode-icon {
+  color: #1e293b !important;
+}
+
+html.dark .settings-page .mode-title {
+  color: #f8fafc !important;
+}
+
+html.dark .settings-page .mode-desc {
+  color: #e2e8f0 !important;
+}
+
+html.dark .settings-page .mode-icon {
+  color: #f8fafc !important;
 }
 
 html.dark .dashboard-page > div > div,

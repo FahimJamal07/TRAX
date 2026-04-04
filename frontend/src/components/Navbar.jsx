@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Bell, ChevronDown, LogOut, TrainFront } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { ThemeToggle } from './ThemeToggle'
@@ -12,6 +12,8 @@ function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
   const [alerts, setAlerts] = useState([])
   const [acknowledgedDelays, setAcknowledgedDelays] = useState(new Set())
   const [storedUser, setStoredUser] = useState(getStoredUserProfile)
+  const notifRef = useRef(null)
+  const profileRef = useRef(null)
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000)
@@ -32,6 +34,22 @@ function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
       window.removeEventListener('storage', syncUserProfile)
       window.removeEventListener('focus', syncUserProfile)
       window.removeEventListener('trax-auth-update', syncUserProfile)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setShowNotifications(false)
+      }
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
 
@@ -117,7 +135,7 @@ function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
         </div>
 
         {/* Bell */}
-        <div style={{ position: 'relative', cursor: 'pointer' }}>
+        <div ref={notifRef} style={{ position: 'relative', cursor: 'pointer' }}>
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             style={{
@@ -253,6 +271,7 @@ function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
 
         {/* Profile */}
         <div
+          ref={profileRef}
           style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', position: 'relative' }}
           onClick={() => setShowMenu(!showMenu)}
         >

@@ -85,9 +85,18 @@ export default function Simulation() {
     setError(null)
     setOptimizationResult(null)
 
-    // Read priority weights from local storage
-    const savedWeights = localStorage.getItem('trax_weights');
-    const parsedWeights = savedWeights ? JSON.parse(savedWeights) : null;
+    // Read full engine config from local storage.
+    let config = {}
+    try {
+      const savedConfig = localStorage.getItem('trax_config')
+      config = savedConfig ? JSON.parse(savedConfig) : {}
+    } catch {
+      config = {}
+    }
+
+    const expressWeight = parseInt(config.expW) || 10
+    const freightWeight = parseInt(config.frtW) || 1
+    const passengerWeight = parseInt(config.pasW) || 5
 
     try {
       const res = await apiFetch('/api/v1/optimize', {
@@ -98,8 +107,12 @@ export default function Simulation() {
           freight_injected_delay: parseInt(freightDelay) || 0,
           priority_train_id: priorityTrainId || null,
           secondary_train_id: secondaryTrainId || null,
-          express_weight: parsedWeights ? parseInt(parsedWeights.express) : 10,
-          freight_weight: parsedWeights ? parseInt(parsedWeights.freight) : 1,
+          optimization_mode: config.mode || 'minimize_delay',
+          headway_time: parseInt(config.headway) || 5,
+          solver_timeout: parseInt(config.solverTimeout) || 30,
+          express_weight: expressWeight,
+          passenger_weight: passengerWeight,
+          freight_weight: freightWeight,
           track_blockages: blockStart !== '' && blockForm.duration !== '' ? [
             {
               start_time: parseInt(blockStart) || 0,
@@ -326,15 +339,7 @@ export default function Simulation() {
             )}
             {optimizationResult && (
               <div className="sim-alert sim-alert-success" style={{ padding: '12px' }}>
-                <h4 style={{ fontSize: '13px', color: '#16a34a', margin: '0 0 8px 0', fontWeight: 'bold' }}>Optimization Successful</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {extractScheduleEntries(optimizationResult.live_schedule).map(([trainId, row]) => (
-                    <div key={trainId} style={{ fontSize: '12px', color: '#374151', display: 'flex', justifyContent: 'space-between' }}>
-                      <span>{trainId}:</span>
-                      <strong>delay: {Number(row?.total_delay_mins ?? 0)}m</strong>
-                    </div>
-                  ))}
-                </div>
+                <h4 style={{ fontSize: '13px', color: '#16a34a', fontWeight: 'bold', alignItems:'center'}}>Optimization Successful!</h4>
               </div>
             )}
           </div>

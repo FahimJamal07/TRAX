@@ -1,170 +1,286 @@
 import React, { useState } from 'react'
-import { apiFetch } from '../utils/api'
+import toast from 'react-hot-toast'
+import {
+  Train,
+  Settings as SettingsIcon,
+  Save,
+} from 'lucide-react'
+
+const MODE_OPTIONS = [
+  {
+    value: 'minimize_delay',
+    title: 'Minimize Delay',
+    description: 'Prioritize timetable adherence and reduce cumulative lateness.',
+  },
+  {
+    value: 'balanced',
+    title: 'Balanced Mode',
+    description: 'Optimize both timetable adherence and total network clearing time.',
+  },
+  {
+    value: 'maximize_throughput',
+    title: 'Maximize Throughput',
+    description: 'Prioritize total train flow and clear the network as fast as possible.',
+  },
+]
+
+const WEIGHT_FIELDS = [
+  { key: 'express', label: 'Express' },
+  { key: 'passenger', label: 'Passenger' },
+  { key: 'freight', label: 'Freight' },
+]
+
+const cardClass = 'whatif-card whatif-card-neutral bg-white dark:bg-slate-800 rounded-xl shadow-sm dark:shadow-none border border-slate-100 dark:border-slate-700 transition-colors duration-200'
+const cardPadding = { padding: 24 }
+const sectionTitleStyle = { fontSize: 14, fontWeight: 700, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.1)' }
+const inp = {
+  border: '1.5px solid #e5e7eb',
+  borderRadius: 10,
+  padding: '10px 14px', 
+  fontSize: 13,
+  outline: 'none',
+  fontFamily: 'DM Sans, sans-serif',
+  width: '100%',
+  color: '#0f1f35',
+}
+const rangeStyle = { width: '100%', height: 8, accentColor: '#2563eb' }
+const fieldGroupStyle = { display: 'flex', flexDirection: 'column', rowGap: 10 }
+const btnPrimary = {
+  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 10,
+  padding: '12px 24px',
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: 'pointer',
+  boxShadow: '0 4px 12px rgba(37,99,235,0.3)',
+  float: 'right',
+}
 
 export default function Settings() {
-  const [s, setS] = useState(() => {
-    const savedWeights = localStorage.getItem('trax_weights');
-    const parsedWeights = savedWeights ? JSON.parse(savedWeights) : { express: 3, passenger: 2, freight: 1 };
-    return {
-      lineType: 'single',
-      headway: 5,
-      capacity: 3,
-      expW: parsedWeights.express || 3,
-      pasW: parsedWeights.passenger || 2,
-      frtW: parsedWeights.freight || 1,
-      mode: 'balanced'
-    };
-  });
-  const [saved, setSaved] = useState(false)
-  const [isResetting, setIsResetting] = useState(false)
+  const [settings, setSettings] = useState(() => {
+    try {
+      const savedConfig = localStorage.getItem('trax_config')
+      const parsed = savedConfig ? JSON.parse(savedConfig) : {}
 
-  const set = (k, v) => setS(p => ({ ...p, [k]: v }))
+      return {
+        optimizationMode: parsed.mode ?? 'minimize_delay',
+        headwayTime: parsed.headway ?? 5,
+        weights: {
+          express: parsed.expW ?? parsed.weights?.express ?? 8,
+          passenger: parsed.pasW ?? parsed.weights?.passenger ?? 6,
+          freight: parsed.frtW ?? parsed.weights?.freight ?? 4,
+        },
+        solverTimeout: parsed.solverTimeout ?? '30s',
+        allowTrainDropping: parsed.allowTrainDropping ?? false,
+      }
+    } catch {
+      return {
+        optimizationMode: 'minimize_delay',
+        headwayTime: 5,
+        weights: {
+          express: 8,
+          passenger: 6,
+          freight: 4,
+        },
+        solverTimeout: '30s',
+        allowTrainDropping: false,
+      }
+    }
+  })
 
-  const handleSave = () => {
-    localStorage.setItem('trax_weights', JSON.stringify({
-      express: s.expW,
-      passenger: s.pasW,
-      freight: s.frtW
-    }));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const setOptimizationMode = (nextMode) => {
+    setSettings((prev) => ({ ...prev, optimizationMode: nextMode }))
   }
 
-  // Calls the real backend reset endpoint, wipes localStorage, then
-  // forces a full page reload so every component re-fetches clean data.
-  const handleReset = async () => {
-    setIsResetting(true)
-    try {
-      const res = await apiFetch('/api/v1/reset', {
-        method: 'POST',
-      })
-      if (!res) return
-      if (!res.ok) throw new Error(`Server error: ${res.status}`)
-      // Belt-and-braces: clear any residual localStorage artefacts
-      localStorage.removeItem('trax_live_schedule')
-      window.location.reload()
-    } catch (err) {
-      console.error('[Settings] Reset failed:', err)
-      alert(`Reset failed: ${err.message}`)
-      setIsResetting(false)
+  const s = {
+    mode: settings.optimizationMode,
+  }
+
+  const set = (key, value) => {
+    if (key === 'mode') {
+      setOptimizationMode(value)
     }
   }
 
-  const card = { borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.06)', padding: 28, marginBottom: 0 }
-  const inp = { border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '10px 14px', fontSize: 13, outline: 'none', fontFamily: 'DM Sans, sans-serif', width: '100%' }
-  const lbl = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }
+  const allowTrainDropping = settings.allowTrainDropping
+  const setAllowTrainDropping = (nextValue) => {
+    setSettings((prev) => ({ ...prev, allowTrainDropping: nextValue }))
+  }
+
+  const handleSave = () => {
+    const configPayload = {
+      mode: settings.optimizationMode,
+      headway: settings.headwayTime,
+      solverTimeout: settings.solverTimeout,
+      weights: settings.weights,
+      allowTrainDropping: settings.allowTrainDropping,
+    }
+    localStorage.setItem('trax_config', JSON.stringify(configPayload))
+    toast.success('Configuration saved successfully!')
+  }
 
   return (
-    <div className="settings-page" style={{ maxWidth: 760 }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f1f35' }}>System Settings</h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>Configure network parameters and optimization behavior</p>
+    <div className="settings-page" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 className="text-slate-900 dark:text-white" style={{ fontSize: 20, fontWeight: 700 }}>Engine Configuration Dashboard</h2>
+          <p className="text-slate-500 dark:text-slate-400" style={{ fontSize: 13, marginTop: 2 }}>Configure the CP-SAT engine behavior and scheduling guardrails.</p>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {/* Section Config */}
-        <div className="surface-card surface-panel" style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 20, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Section Configuration</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            <div>
-              <label style={lbl}>Line Type</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['single', 'double'].map(t => (
-                  <button key={t} onClick={() => set('lineType', t)} className={s.lineType === t ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800/40' : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'} style={{ flex: 1, padding: '9px', borderRadius: 10, border: `1.5px solid ${s.lineType === t ? '#2563eb' : '#e5e7eb'}`, background: s.lineType === t ? '#eff6ff' : '#fff', color: s.lineType === t ? '#2563eb' : '#64748b', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label style={lbl}>Headway Time (min)</label>
-              <input type="number" value={s.headway} onChange={e => set('headway', e.target.value)} style={inp} onFocus={e => e.target.style.borderColor = '#2563eb'} onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-            </div>
-            <div>
-              <label style={lbl}>Section Capacity</label>
-              <input type="number" value={s.capacity} onChange={e => set('capacity', e.target.value)} style={inp} onFocus={e => e.target.style.borderColor = '#2563eb'} onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-            </div>
-          </div>
-        </div>
+      <section className={cardClass} style={{ ...cardPadding, borderRadius: 20 }}>
+        <h2 className="text-slate-900 dark:text-white flex items-center" style={{ ...sectionTitleStyle, columnGap: 12 }}>
+          <SettingsIcon className="w-5 h-5 shrink-0" style={{ marginRight: 2 }} />
+          Optimization Mode
+        </h2>
 
-        {/* Priority Weights */}
-        <div className="surface-card surface-panel" style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 6, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Priority Weights</h3>
-          <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Higher weight = higher scheduling priority during conflicts</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-            {[
-              { key: 'expW', label: 'Express Weight', color: '#ef4444', bgColor: '#fef2f2' },
-              { key: 'pasW', label: 'Passenger Weight', color: '#2563eb', bgColor: '#eff6ff' },
-              { key: 'frtW', label: 'Freight Weight', color: '#f59e0b', bgColor: '#fffbeb' },
-            ].map(({ key, label, color, bgColor }) => (
-              <div key={key}>
-                <label style={lbl}>{label}</label>
-                <input type="number" min="1" max="10" value={s[key]} onChange={e => set(key, e.target.value)} style={inp} onFocus={e => e.target.style.borderColor = color} onBlur={e => e.target.style.borderColor = '#e5e7eb'} />
-                <div style={{ marginTop: 8, height: 6, background: '#f1f5f9', borderRadius: 6 }}>
-                  <div style={{ width: `${(s[key] / 10) * 100}%`, height: '100%', background: color, borderRadius: 6, transition: 'width 0.3s ease' }}></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+          {[
+            { value: 'minimize_delay', label: 'Minimize Delay', desc: 'Prioritize timetable adherence and reduce cumulative lateness.' },
+            { value: 'balanced', label: 'Balanced Mode', desc: 'Optimize both timetable adherence and total network clearing time.' },
+            { value: 'maximize_throughput', label: 'Maximize Throughput', desc: 'Prioritize total train flow and clear the network as fast as possible.' },
+          ].map(mode => {
+            const isActive = s.mode === mode.value;
+            return (
+              <div
+                key={mode.value}
+                onClick={() => set('mode', mode.value)}
+                className={isActive ? "whatif-card-info" : "surface-card-secondary"}
+                style={{ padding: '16px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '12px', transition: 'all 0.2s' }}
+              >
+                {/* Custom Radio Dot */}
+                <div style={{ 
+                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: '2px', transition: 'all 0.2s',
+                  border: isActive ? '5px solid #3b82f6' : '2px solid #94a3b8', 
+                  background: isActive ? '#fff' : 'transparent' 
+                }}></div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? '#3b82f6' : 'inherit' }}>
+                    {mode.label}
+                  </span>
+                  <span className="surface-subtext" style={{ fontSize: 12, lineHeight: 1.4 }}>
+                    {mode.desc}
+                  </span>
                 </div>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={cardClass} style={cardPadding}>
+        <h2 className="text-slate-900 dark:text-white flex items-center" style={{ ...sectionTitleStyle, columnGap: 12 }}>
+          <Train className="w-5 h-5 shrink-0" style={{ marginRight: 2 }} />
+          Priority Weights
+        </h2>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {WEIGHT_FIELDS.map((field) => {
+            const value = settings.weights[field.key]
+
+            return (
+              <div key={field.key} className={cardClass} style={{ padding: '16px', borderRadius: '12px' }}>
+                <label className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">
+                  {field.label}
+                </label>
+                <div className="flex items-center gap-3" style={{padding:4}}>
+                  <input
+                    type="range"
+                    className="surface-input"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={value}
+                    onChange={(e) => {
+                      const next = Number(e.target.value)
+                      setSettings((prev) => ({
+                        ...prev,
+                        weights: {
+                          ...prev.weights,
+                          [field.key]: next,
+                        },
+                      }))
+                    }}
+                    style={rangeStyle}
+                  />
+                  <span className="min-w-6 text-right text-slate-300 text-sm font-semibold" style={{marginLeft:8}}>
+                    {value}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
+
+      <section className={cardClass} style={cardPadding}>
+        <h2 className="text-slate-900 dark:text-white flex items-center" style={{ ...sectionTitleStyle, columnGap: 12 }}>
+          <SettingsIcon className="w-5 h-5 shrink-0" style={{ marginRight: 2 }} />
+          Engine Guardrails
+        </h2>
+
+        <div className="flex flex-col gap-5">
+          <label style={fieldGroupStyle}>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Global Headway Time (minutes)</span>
+            <input
+              type="number"
+              min={1}
+              className="surface-input"
+              value={settings.headwayTime}
+              onChange={(e) => {
+                const next = Number(e.target.value)
+                setSettings((prev) => ({ ...prev, headwayTime: Number.isNaN(next) ? 1 : Math.max(1, next) }))
+              }}
+              style={inp}
+            />
+          </label>
+
+          <label style={fieldGroupStyle}>
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-200" style={{marginTop:10}}>Solver Time Limit</span>
+            <select
+              className="surface-input"
+              value={settings.solverTimeout}
+              onChange={(e) => setSettings((prev) => ({ ...prev, solverTimeout: e.target.value }))}
+              style={inp}
+            >
+              <option value="5s">5s</option>
+              <option value="15s">15s</option>
+              <option value="30s">30s</option>
+              <option value="60s">60s</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="surface-card-secondary" style={{ marginTop: 20, padding: 16, borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Allow Train Dropping (Constraint Relaxation)</span>
+              <span className="surface-subtext" style={{ fontSize: 12 }}>Lets the solver drop lower-priority trains if no feasible full schedule exists.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllowTrainDropping(!allowTrainDropping)}
+              style={{ width: 44, height: 24, borderRadius: 12, border: 'none', background: allowTrainDropping ? '#2563eb' : '#cbd5e1', position: 'relative', cursor: 'pointer', transition: 'background 0.2s' }}
+            >
+              <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: allowTrainDropping ? 22 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
+            </button>
           </div>
         </div>
+      </section>
 
-        {/* Optimization Mode */}
-        <div className="surface-card surface-panel" style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>Optimization Mode</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            {[
-              { value: 'minimize_delay', label: 'Minimize Delay', desc: 'Focus on reducing total delay across all trains', icon: '⏱️' },
-              { value: 'maximize_throughput', label: 'Maximize Throughput', desc: 'Maximize trains handled per hour', icon: '📈' },
-              { value: 'balanced', label: 'Balanced Mode', desc: 'Balance delay reduction with throughput', icon: '⚖️' },
-            ].map(mode => (
-              <button key={mode.value} onClick={() => set('mode', mode.value)} className={s.mode === mode.value ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/40' : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700'} style={{ textAlign: 'left', padding: 16, borderRadius: 14, border: `2px solid ${s.mode === mode.value ? '#2563eb' : '#e5e7eb'}`, background: s.mode === mode.value ? '#eff6ff' : '#fafbfc', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 0.15s' }}>
-                <div style={{ fontSize: 20, marginBottom: 8 }}>{mode.icon}</div>
-                <p className={s.mode === mode.value ? 'text-blue-600 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'} style={{ fontSize: 13, fontWeight: 700, color: s.mode === mode.value ? '#2563eb' : '#374151' }}>{mode.label}</p>
-                <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 4, lineHeight: 1.4 }}>{mode.desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* System Reset */}
-        <div className="surface-card surface-panel" style={card}>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0f1f35', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #f1f5f9' }}>System Data</h3>
-          <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>Clear persistent simulation data from local storage to reset dashboards to default.</p>
-          <button
-            onClick={handleReset}
-            disabled={isResetting}
-            style={{
-              padding: '13px 32px', borderRadius: 12, border: 'none',
-              background: isResetting
-                ? 'linear-gradient(135deg, #9ca3af, #6b7280)'
-                : 'linear-gradient(135deg, #ef4444, #dc2626)',
-              color: '#fff', fontSize: 14, fontWeight: 700,
-              cursor: isResetting ? 'not-allowed' : 'pointer',
-              fontFamily: 'DM Sans, sans-serif', transition: 'all 0.2s',
-              width: 'fit-content',
-              boxShadow: isResetting
-                ? 'none'
-                : '0 4px 12px rgba(220,38,38,0.3)',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            {isResetting ? (
-              <>
-                <div style={{
-                  width: 14, height: 14,
-                  border: '2px solid rgba(255,255,255,0.4)',
-                  borderTopColor: '#fff', borderRadius: '50%',
-                  animation: 'spin 0.75s linear infinite',
-                }} />
-                Resetting Database...
-                <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              </>
-            ) : 'Clear Simulation Data'}
-          </button>
-        </div>
-
-        <button onClick={handleSave} style={{ padding: '13px 32px', borderRadius: 12, border: 'none', background: saved ? 'linear-gradient(135deg, #16a34a, #15803d)' : 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', boxShadow: saved ? '0 4px 12px rgba(22,163,74,0.4)' : '0 4px 12px rgba(37,99,235,0.4)', transition: 'all 0.2s', width: 'fit-content' }}>
-          {saved ? '✓ Settings Saved Successfully' : 'Save Settings'}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleSave}
+          style={btnPrimary}
+        >
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Save className="w-5 h-5" />
+            Save Configuration
+          </span>
         </button>
       </div>
     </div>

@@ -45,6 +45,12 @@ def optimize_network(
     trains_data: list[dict],
     tracks_data: list[dict],
     injected_delays: dict,
+    optimization_mode: str = "minimize_delay",
+    headway_time: int = 5,
+    solver_timeout: int = 30,
+    express_weight: int = 10,
+    passenger_weight: int = 5,
+    freight_weight: int = 1,
     track_blockages: list[dict] | None = None,
     capacity_changes: list[dict] | None = None,
     time_zero_iso: str | None = None,
@@ -75,7 +81,7 @@ def optimize_network(
         departure_minute = int(train.get("scheduled_departure_in_minutes", 0))
         speed_multiplier = float(train.get("speed_multiplier", 1.0))
         travel_duration = max(1, int(round(BASE_TRACK_TRAVEL_TIME_MINS * speed_multiplier)))
-        safety_duration = travel_duration + MOVING_BLOCK_HEADWAY_MINS
+        safety_duration = travel_duration + max(0, int(headway_time))
 
         extra_delay = int(injected_delays.get(tid, 0))
         base_time   = db_delay + extra_delay
@@ -89,7 +95,17 @@ def optimize_network(
         model.Add(delay_var == start_var - base_time)
         model.Add(start_var >= departure_minute)
         model.Add(end_var == start_var + travel_duration)
-        penalty_terms.append(delay_var * priority)
+
+        train_type = str(train.get("type", "")).strip().lower()
+        if train_type == "express":
+            type_weight = int(express_weight)
+        elif train_type == "passenger":
+            type_weight = int(passenger_weight)
+        elif train_type == "freight":
+            type_weight = int(freight_weight)
+        else:
+            type_weight = priority
+        penalty_terms.append(delay_var * max(1, type_weight))
 
         # Enforce strict routing: train presence MUST map to physical nodes
         src = train.get("source", "").replace("Station ", "").strip()
@@ -207,12 +223,23 @@ def optimize_network(
             demands = [1] * len(collected_intervals)
             model.AddCumulative(collected_intervals, demands, capacity)
 
-    # ── 6. Objective Function — Weighted Delay Minimisation ───────────────────
-    model.Minimize(sum(penalty_terms))
+    # ── 6. Objective Function — Mode-Aware Optimisation ──────────────────────
+    makespan = model.NewIntVar(0, PLANNING_HORIZON_MINS * 2, "makespan")
+    model.AddMaxEquality(makespan, [v["end_var"] for v in train_vars.values()])
+
+    if optimization_mode == "maximize_throughput":
+        # Prioritize clearing the network entirely as fast as possible.
+        model.Minimize(makespan)
+    elif optimization_mode == "balanced":
+        # Balance clearing the network with individual train delays.
+        model.Minimize(sum(penalty_terms) + makespan)
+    else:
+        # "minimize_delay" (default): prioritize individual timetable adherence.
+        model.Minimize(sum(penalty_terms))
 
     # ── 7. Solve ───────────────────────────────────────────────────────────────
     solver: Any = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 10.0
+    solver.parameters.max_time_in_seconds = float(solver_timeout)
 
     status = solver.Solve(model)
 
