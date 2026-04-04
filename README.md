@@ -11,7 +11,7 @@ TRAX is an enterprise-grade Railway Traffic Control dashboard designed to simula
 
 |  |  |
 | :---: | :---: |
-| ![Dashboard](frontend\src\assets\dashboard1.png) | ![Dashboard](frontend\src\assets\dashboard2.png) |
+| ![Dashboard](dashboard1.png) | ![Dashboard](dashboard2.png) |
 
 
 ## Core Features
