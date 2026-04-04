@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, CheckCircle } from 'lucide-react'
 import { apiFetch } from '../utils/api'
+import logo from '../assets/logo.png'
 
 function Signup() {
   const navigate = useNavigate()
@@ -89,7 +90,13 @@ function Signup() {
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.1)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '1px solid rgba(255,255,255,0.15)', fontSize: 28 }}>🚆</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px' }}>
+            <img
+              src={logo}
+              alt="TRAX Junction Logo"
+              style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+            />
+          </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>Train Traffic Control System</h1>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Indian Railways — Smart Traffic Management</p>
         </div>

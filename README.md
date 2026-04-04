@@ -9,12 +9,14 @@
 ## Overview
 TRAX is an enterprise-grade Railway Traffic Control dashboard designed to simulate, monitor, and optimize train schedules across a multi-node transit network. Powered by Google's OR-Tools (CP-SAT solver) on the backend and a high-performance React SVG engine on the frontend, TRAX mathematically resolves scheduling conflicts, enforces physical routing constraints, and provides real-time telemetry to Section Controllers.
 
+![TRAX Dashboard Screenshot](placeholder_for_screenshot.png)
+
 ## Core Features
-* **Constraint Programming Engine:** Utilizes a CP-SAT solver to automatically generate conflict-free schedules, minimizing total network delay.
+* **Constraint Programming Engine:** Utilizes a CP-SAT solver to automatically generate conflict-free schedules. Supports three dynamic optimization objectives: *Minimize Delay*, *Maximize Throughput*, and *Balanced Mode*.
 * **Functional Topology Routing:** Physically segregates high-speed Express/Freight traffic onto bypass **Mainlines** while routing Passenger traffic into docking **Loop Lines**.
 * **Live SVG Section Map:** A custom-built, mathematically scaled interactive map featuring dynamic platform capacity indicators, anti-collision train layout algorithms, and deep-dive telemetry tooltips.
 * **Real-Time Network Telemetry:** Live dashboards displaying Track Saturation, Delay Analytics, and critical system alerts.
-* **Infrastructure Simulation:** Allows dispatchers to inject delays or block physical track sections to test network resilience and trigger automatic re-optimization.
+* **Infrastructure Simulation:** Allows dispatchers to inject delays, change platform capacities, or block physical track sections to test network resilience and trigger automatic re-optimization.
 
 ---
 
@@ -24,14 +26,15 @@ The repository is strictly divided into two decoupled services:
 
 ### Frontend (`/frontend`)
 * **Framework:** React.js (via Vite)
-* **Styling:** Tailwind CSS
-* **Data Visualization:** Native SVG DOM manipulation & Recharts/Chart.js
+* **Styling:** Tailwind CSS + Semantic Global CSS
+* **State & Data Fetching:** React Hooks + Fetch API (JWT Intercepted)
+* **Data Visualization:** Native SVG DOM manipulation & Recharts
 
 ### Backend (`/backend`)
 * **Framework:** FastAPI (Python)
 * **Optimization Engine:** Google OR-Tools (`cp_model`)
 * **Database:** SQLite (via SQLAlchemy ORM)
-* **Authentication:** JWT (JSON Web Tokens)
+* **Authentication:** JWT (JSON Web Tokens) with Role-Based Access Control (RBAC)
 
 ---
 
@@ -51,13 +54,13 @@ python -m venv venv
 source venv/bin/activate  # On Windows use: venv\Scripts\activate
 
 # Install required Python packages
-pip install fastapi uvicorn sqlalchemy google-optpal pydantic
+pip install fastapi uvicorn sqlalchemy ortools pydantic PyJWT passlib[bcrypt] python-multipart
 
 # Set up environment variables
 # Create a .env file in the root directory and add a secure cryptographic key:
 echo "TRAX_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(32))')" > .env
 
-# Seed the database with the initial 5-station topology and train roster
+# Seed the database with the initial track topology and train roster
 python -m backend.seed
 
 # Start the FastAPI server
@@ -65,31 +68,67 @@ uvicorn backend.main:app --reload
 ```
 The backend API will now be running at <http://127.0.0.1:8000.>
 
+### 2. Frontend Setup
+
+Open a new terminal in the root directory:
+```bash 
+# Navigate to the frontend directory
+cd frontend
+
+# Install Node dependencies
+npm install
+
+# Start the Vite development server
+npm run dev
+```
+The React application will be available at http://localhost:5173.
+
+---
+## Default Credentials
+
+Running the backend.seed script automatically generates a master administrator account. Use these credentials to log into the TRAX dashboard:
+
+Username: admin
+
+Password: trax2026
+
+Default Credentials
+Running the backend.seed script automatically generates a master administrator account. Use these credentials to log into the TRAX dashboard:
+
+Username: admin
+
+Password: trax2026
+
+*(**Note**: It is highly recommended to change this password in a production environment).*
+
 ---
 ## Usage Guide
 
-1. **Dashboard Overview**: Upon logging in, the Section Controller is presented with the live network state, including active delays and track saturation metrics.
+**Dashboard Overview:** Upon logging in, the Section Controller is presented with the live network state, including active delays and track saturation metrics.
 
-2. **Section Map**: Navigate to the Map tab to view the physical layout of the trains. Hover over trains or station cards for exact scheduling deviations and platform utilization.
+**Section Map:** Navigate to the Map tab to view the physical layout of the trains. Hover over trains or station cards for exact scheduling deviations and platform utilization.
 
-3. **Simulation & Optimization**: Use the Simulation panel to add a new train to the network or inject a delay. The backend CP-SAT solver will automatically recalculate the global schedule and push the updated, conflict-free routes to the map.
+**Simulation & Optimization:** Use the Simulation panel to add a new train to the network or inject a delay. The backend CP-SAT solver will automatically recalculate the global schedule and push the updated, conflict-free routes to the map.
+
+**Engine Configuration:** Admins can use the Settings panel to alter the CP-SAT engine's objective function, adjust global headway times, or manipulate train priority weights.
 
 ---
-## Project Structure 
+## Project Structure
 
-```
 TRAX/
 ├── backend/
 │   ├── __init__.py
 │   ├── main.py          # FastAPI application & route definitions
 │   ├── models.py        # SQLAlchemy database schemas
 │   ├── optimizer.py     # CP-SAT constraint programming logic
-│   └── seed.py          # Database initialization script
+│   ├── security.py      # JWT Auth & Role-Based Access Control
+│   └── seed.py          # Database initialization & topology injection
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── components/  # Reusable UI widgets (Header, Modals)
-│   │   ├── pages/       # Core views (Dashboard, SectionMap, Simulation)
+│   │   ├── components/  # Reusable UI widgets (Navbar, Sidebar, Maps)
+│   │   ├── pages/       # Core views (Dashboard, SectionMap, Simulation, Settings)
+│   │   ├── utils/       # API interceptors and helpers
 │   │   ├── App.jsx
 │   │   └── main.jsx
 │   ├── package.json
@@ -97,4 +136,3 @@ TRAX/
 ├── .env                 # Secret keys and environment variables
 ├── .gitignore
 └── README.md
-```

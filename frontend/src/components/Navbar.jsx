@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Bell, ChevronDown, LogOut, TrainFront } from 'lucide-react'
+import { Bell, ChevronDown, LogOut } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { ThemeToggle } from './ThemeToggle'
 import { getStoredUserProfile } from '../utils/session'
+import logo from '../assets/logo.png'
 
 
 function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
@@ -107,15 +108,11 @@ function Navbar({ onLogout, isDarkMode, setIsDarkMode }) {
     }}>
       {/* LEFT: Logo + Title */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
-          width: 44, height: 44,
-          background: 'rgba(255,255,255,0.1)',
-          borderRadius: 12,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          border: '1px solid rgba(255,255,255,0.15)',
-        }}>
-          <TrainFront size={22} color="#ffffff" strokeWidth={1.8} />
-        </div>
+        <img
+          src={logo}
+          alt="TRAX Junction Logo"
+          style={{ height: '32px', width: 'auto', display: 'block' }}
+        />
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>
             Train Traffic Control System

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { apiFetch } from '../utils/api'
+import logo from '../assets/logo.png'
 
 function Login() {
   const [username, setUsername] = useState('')
@@ -74,7 +75,13 @@ function Login() {
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0f1f35 0%, #1d3454 60%, #243f68 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ width: 64, height: 64, background: 'rgba(255,255,255,0.1)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', border: '1px solid rgba(255,255,255,0.15)', fontSize: 28 }}>🚆</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '32px' }}>
+            <img
+              src={logo}
+              alt="TRAX Junction Logo"
+              style={{ height: '48px', width: 'auto', objectFit: 'contain' }}
+            />
+          </div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>Train Traffic Control System</h1>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>Indian Railways — Smart Traffic Management</p>
         </div>
