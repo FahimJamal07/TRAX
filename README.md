@@ -91,16 +91,10 @@ The React application will be available at http://localhost:5173.
 
 Running the backend.seed script automatically generates a master administrator account. Use these credentials to log into the TRAX dashboard:
 
-Username: admin
+**Username:** admin
 
-Password: trax2026
+**Password:** trax2026
 
-Default Credentials
-Running the backend.seed script automatically generates a master administrator account. Use these credentials to log into the TRAX dashboard:
-
-Username: admin
-
-Password: trax2026
 
 *(**Note**: It is highly recommended to change this password in a production environment).*
 
