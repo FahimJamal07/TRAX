@@ -556,3 +556,17 @@ def reset_network(
     }
 
 
+# ---------------------------------------------------------------------------
+# 7. POST / — Root Health Check / Status
+# ---------------------------------------------------------------------------
+@app.post("/")
+def health_check():
+    """
+    Root endpoint for health checks and basic status.
+    Returns a simple success response indicating the backend is running.
+    """
+    return {
+        "status": "healthy",
+        "message": "TRAX Core Optimization Engine is running.",
+    }
+
