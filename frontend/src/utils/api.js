@@ -10,9 +10,12 @@ export const apiFetch = async (endpoint, options = {}) => {
     headers.Authorization = `Bearer ${token}`
   }
 
-  // Construct full URL (assuming backend is at this address)
-  const url = `http://127.0.0.1:8000${endpoint}`
+  
+  
+  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
+  const url = `${BASE_URL}${endpoint}`;
+  
   const response = await fetch(url, { ...options, headers })
 
   // Context-aware 401 trap: skip for auth endpoints so Login can handle password errors

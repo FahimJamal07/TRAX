@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from typing import Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # --- TRAX backend layer ---
 try:
@@ -34,6 +36,13 @@ except ImportError:
 
 app = FastAPI(title="TRAX Core Optimization Engine")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://your-frontend-url.vercel.app"], 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def _parse_iso_datetime(value: object) -> datetime | None:
     """Parse ISO datetime values safely from DB text fields."""
