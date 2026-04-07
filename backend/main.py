@@ -36,13 +36,7 @@ except ImportError:
 
 app = FastAPI(title="TRAX Core Optimization Engine")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://trax-lemon.vercel.app"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 def _parse_iso_datetime(value: object) -> datetime | None:
     """Parse ISO datetime values safely from DB text fields."""
@@ -67,6 +61,13 @@ def _format_ampm(dt: datetime | None) -> str | None:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://trax-lemon.vercel.app"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
