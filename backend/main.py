@@ -58,19 +58,17 @@ def _format_ampm(dt: datetime | None) -> str | None:
     return dt.strftime("%I:%M %p")
 
 # 1. CORS POLICY: This allows your local React app (usually port 3000 or 5173) to talk to this Python server.
+origins = [
+    "https://trax-lemon.vercel.app",  # Your Vercel frontend
+    "http://localhost:5173",          # For local Vite development
+    "http://127.0.0.1:5173",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=origins,            # Explicitly allow these origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://trax-lemon.vercel.app"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],              # Allow GET, POST, OPTIONS, etc.
+    allow_headers=["*"],              # Allow all headers (Authorization, Content-Type)
 )
 
 # 2. THE INPUT SCHEMA: This matches the "Add Delay to Train" box on your React Dashboard
