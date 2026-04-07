@@ -38,7 +38,7 @@ app = FastAPI(title="TRAX Core Optimization Engine")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://your-frontend-url.vercel.app"], 
+    allow_origins=["https://trax-lemon.vercel.app"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

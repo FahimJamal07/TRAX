@@ -12,10 +12,14 @@ export const apiFetch = async (endpoint, options = {}) => {
 
   
   
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+  let BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+
+  if (BASE_URL.endsWith('/')) {
+  BASE_URL = BASE_URL.slice(0, -1);
+}
 
   const url = `${BASE_URL}${endpoint}`;
-  
+
   const response = await fetch(url, { ...options, headers })
 
   // Context-aware 401 trap: skip for auth endpoints so Login can handle password errors
