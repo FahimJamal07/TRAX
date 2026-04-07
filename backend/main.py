@@ -557,9 +557,9 @@ def reset_network(
 
 
 # ---------------------------------------------------------------------------
-# 7. POST / — Root Health Check / Status
+# 7. GET / — Root Health Check / Status
 # ---------------------------------------------------------------------------
-@app.post("/")
+@app.get("/")
 def health_check():
     """
     Root endpoint for health checks and basic status.
