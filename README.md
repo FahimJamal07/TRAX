@@ -133,5 +133,5 @@ TRAX/
 │   └── tailwind.config.js
 ├── .env                 # Secret keys and environment variables
 ├── .gitignore
-└── README.md
+└── README.md  
 ```
